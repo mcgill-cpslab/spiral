@@ -1,10 +1,9 @@
 #!/usr/bin/env python
-"""Tests for `dynamite` package."""
+"""Tests for `spiral-core` package."""
 
 import pytest
-from click.testing import CliRunner
 
-from dynamite import cli
+from spiral.core import utils
 
 
 @pytest.fixture
@@ -26,10 +25,4 @@ def test_content(response):
 
 def test_command_line_interface():
     """Test the CLI."""
-    runner = CliRunner()
-    result = runner.invoke(cli.main)
-    assert result.exit_code == 0
-    assert 'dynamite' in result.output
-    help_result = runner.invoke(cli.main, ['--help'])
-    assert help_result.exit_code == 0
-    assert '--help  Show this message and exit.' in help_result.output
+    assert utils.func_t() == 5
