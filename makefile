@@ -1,4 +1,4 @@
-sources = dynamite
+sources = spiral
 
 .PHONY: test format lint unittest coverage pre-commit clean
 test: format lint unittest

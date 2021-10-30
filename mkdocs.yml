@@ -1,13 +1,14 @@
-site_name: dynamite
-site_url: https://zhuyuecai.github.io/dynamite
-repo_url: https://github.com/zhuyuecai/dynamite
-repo_name: zhuyuecai/dynamite
+site_name: spiral
+site_url: https://zhuyuecai.github.io/spiral
+repo_url: https://github.com/zhuyuecai/spiral
+repo_name: zhuyuecai/spiral
 #strict: true
 nav:
   - Home: index.md
   - Installation: installation.md
   - Usage: usage.md
-  - Modules: api.md
+  - Modules:
+        - Utils: api.md
   - Contributing: contributing.md
   - Changelog: changelog.md
 theme:
@@ -51,7 +52,7 @@ plugins:
       lang: en
   - mkdocstrings:
       watch:
-        - dynamite
+        - spiral
 extra:
   social:
     - icon: fontawesome/brands/twitter
@@ -63,7 +64,7 @@ extra:
       link: https://github.com/waynerv/cookiecutter-pypackage
       name: Facebook
     - icon: fontawesome/brands/github
-      link: https://github.com/zhuyuecai/dynamite
+      link: https://github.com/zhuyuecai/spiral
       name: Github
     - icon: material/email
       link: "mailto:zhuyuecai@gmail.com"

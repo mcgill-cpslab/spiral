@@ -1,8 +1,8 @@
 [tool]
 [tool.poetry]
-name = "dynamite"
+name = "spiral"
 version = "0.0.0"
-homepage = "https://github.com/zhuyuecai/dynamite"
+homepage = "https://github.com/zhuyuecai/spiral"
 description = "A tool to help building ML pipeline easier for non technical users.."
 authors = ["Yuecai Zhu <zhuyuecai@gmail.com>"]
 readme = "README.md"
@@ -18,8 +18,9 @@ classifiers=[
     'Programming Language :: Python :: 3.8',
     'Programming Language :: Python :: 3.9',
 ]
+
 packages = [
-    { include = "dynamite" },
+    { include = "spiral" },
     { include = "tests", format = "sdist" },
 ]
 
@@ -69,9 +70,6 @@ doc = [
     "mkdocs-material-extension",
     "mkdocs-autorefs"
     ]
-
-[tool.poetry.scripts]
-dynamite = 'dynamite.cli:main'
 
 [tool.black]
 line-length = 120
