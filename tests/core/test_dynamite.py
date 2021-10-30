@@ -25,4 +25,4 @@ def test_content(response):
 
 def test_command_line_interface():
     """Test the CLI."""
-    assert utils.func_t() == 5
+    assert utils.func_t(5) == 5
