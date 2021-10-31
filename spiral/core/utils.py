@@ -1,6 +1,6 @@
 """Main module."""
 
-from dgl.nn.tensorflow import GraphConv
+from dgl.nn import GraphConv
 
 
 def func_t(a: int) -> int:
