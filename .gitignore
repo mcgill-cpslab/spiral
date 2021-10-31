@@ -111,3 +111,7 @@ ENV/
 
 # mkdocs build dir
 site/
+
+# poetry lock file
+poetry.lock
+
