@@ -1,5 +1,7 @@
 """Main module."""
 
+from dgl.nn.tensorflow import GraphConv
+
 
 def func_t(a: int) -> int:
     """
@@ -11,4 +13,5 @@ def func_t(a: int) -> int:
     Returns:
       number: int
     """
+    a = GraphConv(2, 3)
     return 5
