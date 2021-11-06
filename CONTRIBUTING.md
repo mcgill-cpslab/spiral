@@ -65,7 +65,13 @@ Ready to contribute? Here's how to set up `dynamite` for local development.
 5. Create a branch for local development:
 
     ```
-    $ git checkout -b name-of-your-bugfix-or-feature
+    $ git checkout -b feature/name-of-your-feature
+    ```
+    
+    for bug fix:
+
+    ```
+    $ git checkout -b bugfix/name-of-your-bugfix
     ```
 
     Now you can make your changes locally.
