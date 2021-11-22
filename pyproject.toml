@@ -1,8 +1,8 @@
 [tool]
 [tool.poetry]
-name = "spiral"
+name = "nineturn"
 version = "0.0.0"
-homepage = "https://github.com/zhuyuecai/spiral"
+homepage = "https://github.com/mcgill-cpslab/spiral"
 description = "A tool to help building ML pipeline easier for non technical users.."
 authors = ["Yuecai Zhu <zhuyuecai@gmail.com>"]
 readme = "README.md"
@@ -20,7 +20,7 @@ classifiers=[
 ]
 
 packages = [
-    { include = "spiral" },
+    { include = "nineturn" },
     { include = "tests", format = "sdist" },
 ]
 

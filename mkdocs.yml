@@ -1,7 +1,7 @@
-site_name: spiral
-site_url: https://zhuyuecai.github.io/spiral
-repo_url: https://github.com/zhuyuecai/spiral
-repo_name: zhuyuecai/spiral
+site_name: nineturn
+site_url: https://github.com/mcgill-cpslab/spiral
+repo_url: https://github.com/mcgill-cpslab/spiral
+repo_name: mcgill-cpslab/nineturn
 #strict: true
 nav:
   - Home: index.md
@@ -52,7 +52,7 @@ plugins:
       lang: en
   - mkdocstrings:
       watch:
-        - spiral
+        - nineturn
 extra:
   social:
     - icon: fontawesome/brands/twitter
@@ -64,7 +64,7 @@ extra:
       link: https://github.com/waynerv/cookiecutter-pypackage
       name: Facebook
     - icon: fontawesome/brands/github
-      link: https://github.com/zhuyuecai/spiral
+      link:  https://github.com/mcgill-cpslab/spiral
       name: Github
     - icon: material/email
       link: "mailto:zhuyuecai@gmail.com"
