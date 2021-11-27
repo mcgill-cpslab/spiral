@@ -2,7 +2,7 @@
 """Tests `nineturn.dtdg.types` package."""
 
 
-from nineturn.dtdg.types import Snapshot
+# from nineturn.dtdg.types import Snapshot
 
 
 def test_snapshot():

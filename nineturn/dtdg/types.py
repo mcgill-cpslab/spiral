@@ -12,14 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""common types for the dtdg package
+"""common types for the dtdg package.
 
 This file define the types required for dtdg package
 """
 
 
 class Snapshot:
-    """A snapshot of a dynamic graph. The snapshot is usually a tuple (A,X,E,t)
-    where X is the node feature table, A is the adjacency matrix, E is the edge feature table
-    and t is the timestamp
+    """A snapshot of a dynamic graph.
+
+    The snapshot is usually a tuple (A,X,E,t) where X is the node feature table,
+    A is the adjacency matrix, E is the edge feature table
+    and t is the timestamp.
     """

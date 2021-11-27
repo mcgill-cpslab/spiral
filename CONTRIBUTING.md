@@ -62,9 +62,11 @@ Ready to contribute? Here's how to set up `nineturn` for local development.
     $ poetry install -E test -E doc -E dev
     ```
 
-5. Create a branch for local development:
+5. Create your local development branch.
+   You can create your local development branch from the project branch with name prefix as 'project/' for local development:
 
     ```
+    $ git checkout project/a_project_branch
     $ git checkout -b feature/name-of-your-feature
     ```
     
@@ -75,6 +77,18 @@ Ready to contribute? Here's how to set up `nineturn` for local development.
     ```
 
     Now you can make your changes locally.
+
+    If you have spent quite some time on your change and there maybe new updates to the master branch, 
+    run the following to sync up your feature branch:
+
+
+    ```
+    $ git checkout project/base_project_branch
+    $ git pull
+    $ git checkout your_feature_bugfix_branch
+    $ git merge --no-ff  project/base_project_branch
+    ```
+
 
 6. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
@@ -113,6 +127,12 @@ $ poetry run pytest tests/your_working_module/your_test_cases.py
 
 To run a subset of tests.
 
+
+```
+$ poetry run flake8 pyth_to_your_code
+```
+
+To run coding style check on a particular file or folder
 
 ## Deploying
 
