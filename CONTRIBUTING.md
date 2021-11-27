@@ -48,11 +48,11 @@ If you are proposing a feature:
 
 Ready to contribute? Here's how to set up `nineturn` for local development.
 
-1. Fork the `nineturn` repo on GitHub.
-2. Clone your fork locally
+1. Find an issue you want to work on..
+2. Clone `nineturn` locally
 
     ```
-    $ git clone git@github.com:your_name_here/nineturn.git
+    $ git clone https://github.com/mcgill-cpslab/spiral.git
     ```
 
 3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
