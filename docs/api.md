@@ -1,2 +1,2 @@
-# spiral.core.utils module
-::: spiral.core.utils
+# nineturn.dtdg.types module
+::: nineturn.dtdg.types
