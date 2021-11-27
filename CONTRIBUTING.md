@@ -9,7 +9,7 @@ You can contribute in many ways:
 
 ### Report Bugs
 
-Report bugs at https://github.com/zhuyuecai/dynamite/issues.
+Report bugs at https://github.com/mcgill-cpslab/spiral/issues.
 
 If you are reporting a bug, please include:
 
@@ -29,13 +29,13 @@ and "help wanted" is open to whoever wants to implement it.
 
 ### Write Documentation
 
-dynamite could always use more documentation, whether as part of the
-official dynamite docs, in docstrings, or even on the web in blog posts,
+nineturn could always use more documentation, whether as part of the
+official nineturn docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 ### Submit Feedback
 
-The best way to send feedback is to file an issue at https://github.com/zhuyuecai/dynamite/issues.
+The best way to send feedback is to file an issue at https://github.com/mcgill-cpslab/spiral/issues.
 
 If you are proposing a feature:
 
@@ -46,13 +46,13 @@ If you are proposing a feature:
 
 ## Get Started!
 
-Ready to contribute? Here's how to set up `dynamite` for local development.
+Ready to contribute? Here's how to set up `nineturn` for local development.
 
-1. Fork the `dynamite` repo on GitHub.
+1. Fork the `nineturn` repo on GitHub.
 2. Clone your fork locally
 
     ```
-    $ git clone git@github.com:your_name_here/dynamite.git
+    $ git clone git@github.com:your_name_here/nineturn.git
     ```
 
 3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
@@ -62,9 +62,11 @@ Ready to contribute? Here's how to set up `dynamite` for local development.
     $ poetry install -E test -E doc -E dev
     ```
 
-5. Create a branch for local development:
+5. Create your local development branch.
+   You can create your local development branch from the project branch with name prefix as 'project/' for local development:
 
     ```
+    $ git checkout project/a_project_branch
     $ git checkout -b feature/name-of-your-feature
     ```
     
@@ -75,6 +77,18 @@ Ready to contribute? Here's how to set up `dynamite` for local development.
     ```
 
     Now you can make your changes locally.
+
+    If you have spent quite some time on your change and there maybe new updates to the master branch, 
+    run the following to sync up your feature branch:
+
+
+    ```
+    $ git checkout project/base_project_branch
+    $ git pull
+    $ git checkout your_feature_bugfix_branch
+    $ git merge --no-ff  project/base_project_branch
+    ```
+
 
 6. When you're done making changes, check that your changes pass the
    tests, including testing other Python versions, with tox:
@@ -88,7 +102,7 @@ Ready to contribute? Here's how to set up `dynamite` for local development.
     ```
     $ git add .
     $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-bugfix-or-feature
+    $ git push origin name-of-your-branch
     ```
 
 8. Submit a pull request through the GitHub website.
@@ -102,17 +116,23 @@ Before you submit a pull request, check that it meets these guidelines:
    your new functionality into a function with a docstring, and add the
    feature to the list in README.md.
 3. The pull request should work for Python 3.6, 3.7, 3.8 and 3.9. Check
-   https://github.com/zhuyuecai/dynamite/actions
+   https://github.com/mcgill-cpslab/spiral/actions
    and make sure that the tests pass for all supported Python versions.
 
 ## Tips
 
 ```
-$ poetry run pytest tests/test_dynamite.py
+$ poetry run pytest tests/your_working_module/your_test_cases.py
 ```
 
 To run a subset of tests.
 
+
+```
+$ poetry run flake8 pyth_to_your_code
+```
+
+To run coding style check on a particular file or folder
 
 ## Deploying
 
