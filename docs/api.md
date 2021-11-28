@@ -1,2 +1,2 @@
-# nineturn.dtdg.types module
-::: nineturn.dtdg.types
+#nineturn.core.config module
+:::nineturn.core.config
