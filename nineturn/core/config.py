@@ -57,14 +57,12 @@ def _set_backend() -> str:
     config_path = os.path.join(working_dir, 'config.json')
     backend_name = os.getenv(_NINETURN_BACKEND, "")
 
-    print("run here 1", file=sys.stdout)
     if os.path.exists(config_path):
         with open(config_path, "r") as config_file:
             config_dict = json.load(config_file)
             backend_name = config_dict.get('backend', '').lower()
 
     if backend_name not in [_TENSORFLOW, _PYTORCH]:
-        print("run here", file=sys.stdout)
         print(_BACKEND_NOT_FOUND, file=sys.stderr)
     os.environ[_DGL_BACKEND] = backend_name
     return backend_name
