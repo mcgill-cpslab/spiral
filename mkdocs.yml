@@ -8,7 +8,7 @@ nav:
   - Installation: installation.md
   - Usage: usage.md
   - Modules:
-        - Utils: api.md
+        - nineturn.core.config: api.md
   - Contributing: contributing.md
   - Changelog: changelog.md
 theme:
