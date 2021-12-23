@@ -17,33 +17,32 @@
 This file define the types required for dtdg package
 """
 
-from nptyping import Float64, NDArray
+from dgl import DGLGraph, graph
 
-
-class Edge:
-    """An edge in the source data."""
-
-    def __init__(self, src: int, dst: int, index: int, feature: NDArray[Float64]):
-        """An edge in the source data."""
-        self.src = src
-        self.dst = dst
-        self.id = index
-        self.feature = feature
+# from nptyping import Float64, NDArray
 
 
 class Snapshot:
     """A snapshot of a dynamic graph.
 
-    The snapshot is usually a tuple (A,X,E,t) where X is the node feature table,
-    A is the adjacency matrix, E is the edge feature table
-    and t is the timestamp. In this implementation, A is represented by DGL.graph,
-    X and E is nullable two - D matrix, with row id to be the node or edge index,
-    corresponding to the one use in constructing the DGL.graph.
-
+    The snapshot is usually a tuple (V,X,E,t) where X is the node feature table,
+    V is the adjacency matrix, E is the edge feature table with the first entry the source id and the second entry the
+    destination id. And edge e in E could have more than two entry. The extra ones would be edge features.
+    t is the timestamp when the snapshot was taken. For DTDG, this is usually an integer representing the positional
+    ordering.
+    In this implementation, the graph state (V,X,E) is implemented by a DGLGraph.
     When designing this class, our primary goal is to support the loading of dynamic graph data
     in 'https://snap.stanford.edu/data/',
     """
 
-    def __init__(self, edges):
+    def __init__(self, observation: DGLGraph, t: int):
         """An edge in the source data."""
-        self.edges = edges
+        self.observation = observation
+        self.t = t
+
+
+class DiscreteGraph:
+    """Discrete Time Dynamic Graph is a collection of static_graph as its snapshots and their attached timestamps"""
+
+    def __init__(self, snapshots: list[Snapshot]):
+        self.snapshots = snapshots

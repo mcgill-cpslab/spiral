@@ -25,9 +25,9 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.6.2,<4.0"
+python = ">=3.6.2,<3.10"
 click = "8.0.1"
-dgl = "0.6.1"
+dgl = ">=0.6.1"
 
 black  = { version = "^21.5b2", optional = true}
 isort  = { version = "^5.8.0", optional = true}
@@ -50,6 +50,7 @@ pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
 torch = "^1.10.0"
+tensorflow = {version = "2.7.0", optional = true}
 
 [tool.poetry.extras]
 test = [
@@ -59,7 +60,8 @@ test = [
     "mypy",
     "flake8",
     "flake8-docstrings",
-    "pytest-cov"
+    "pytest-cov",
+    "tensorflow"
     ]
 
 dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version"]
