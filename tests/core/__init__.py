@@ -1,1 +1,1 @@
-from .common_functions import *
+"""Test.core module."""

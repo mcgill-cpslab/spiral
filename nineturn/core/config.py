@@ -28,7 +28,7 @@ import logging.config
 import os
 import sys
 
-from nineturn.core.backends import PYTORCH, TENSORFLOW
+from nineturn.core.backends import PYTORCH, TENSORFLOW, supported_backends
 
 _NINETURN_BACKEND = "NINETURN_BACKEND"
 _DGL_BACKEND = "DGLBACKEND"
@@ -39,7 +39,7 @@ _BACKEND_NOT_FOUND = f"""
     Please set up environment variable '{_NINETURN_BACKEND}' to one of '{_TENSORFLOW}'
     and '{_PYTORCH}' to select your backend.
     """
-_BACKEND_NOT_SET = f"""Nine Turn backend is not set in either pipeline code, configuration file 
+_BACKEND_NOT_SET = f"""Nine Turn backend is not set in either pipeline code, configuration file
     or environment variable. Assuming {_PYTORCH} for now.
     """
 
@@ -98,6 +98,7 @@ LOGGING = {
 
 
 def get_logger():
+    """Internal function, return a logger specific to nine turn."""
     logging.basicConfig()
     logging.config.dictConfig(LOGGING)
     return logging.getLogger()
@@ -122,7 +123,6 @@ def set_backend(backend=None) -> str:
         stop the current run and print error message.
 
     """
-
     backend_name = ""
     working_dir = os.getcwd()
     config_path = os.path.join(working_dir, 'config.json')
@@ -138,14 +138,14 @@ def set_backend(backend=None) -> str:
         logger.warning(_BACKEND_NOT_SET)
         backend_name = _PYTORCH
 
-    if backend_name not in [_TENSORFLOW, _PYTORCH]:
+    if backend_name not in supported_backends():
         logger.warning(_BACKEND_NOT_FOUND)
         backend_name = _PYTORCH
-
+    logger.info("Using Nine Turn Backend: %s" % (backend_name))
     os.environ[_DGL_BACKEND] = backend_name
     modules_to_clear = [k for k in sys.modules.keys() if 'dgl' in k]
     for k in modules_to_clear:
         del sys.modules[k]
-    import dgl
+    # import dgl
 
     return backend_name

@@ -26,4 +26,9 @@ PYTORCH = "pytorch"
 
 
 def supported_backends() -> list[str]:
+    """A function to return the list of backends that Nine Turn supports.
+
+    Returns:
+        a list of supported banckend names in string
+    """
     return [TENSORFLOW, PYTORCH]

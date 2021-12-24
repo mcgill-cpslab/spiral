@@ -17,9 +17,7 @@
 This file define the types required for dtdg package
 """
 
-from dgl import DGLGraph, graph
-
-# from nptyping import Float64, NDArray
+from dgl import DGLGraph
 
 
 class Snapshot:
@@ -36,13 +34,14 @@ class Snapshot:
     """
 
     def __init__(self, observation: DGLGraph, t: int):
-        """An edge in the source data."""
+        """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
         self.observation = observation
         self.t = t
 
 
 class DiscreteGraph:
-    """Discrete Time Dynamic Graph is a collection of static_graph as its snapshots and their attached timestamps"""
+    """Discrete Time Dynamic Graph is a collection of static_graph as its snapshots and their attached timestamps."""
 
     def __init__(self, snapshots: list[Snapshot]):
-        self.snapshots = snapshots
+        """A DTDG is a list of snapshots sorted by their timestamps asc."""
+        self.snapshots = sorted(snapshots, key=lambda x: x.t)
