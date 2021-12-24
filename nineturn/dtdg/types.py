@@ -17,6 +17,8 @@
 This file define the types required for dtdg package
 """
 
+from typing import Dict, List, Optional, Set, Tuple
+
 from dgl import DGLGraph
 
 
@@ -42,6 +44,6 @@ class Snapshot:
 class DiscreteGraph:
     """Discrete Time Dynamic Graph is a collection of static_graph as its snapshots and their attached timestamps."""
 
-    def __init__(self, snapshots: list[Snapshot]):
+    def __init__(self, snapshots: List[Snapshot]):
         """A DTDG is a list of snapshots sorted by their timestamps asc."""
         self.snapshots = sorted(snapshots, key=lambda x: x.t)
