@@ -17,7 +17,7 @@
 This file define the types required for dtdg package
 """
 
-from typing import Dict, List, Optional, Set, Tuple
+from typing import List
 
 from dgl import DGLGraph
 

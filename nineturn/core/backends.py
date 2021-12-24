@@ -21,11 +21,13 @@ Example:
     >>> print(backends.supported_backends())
 """
 
+from typing import List
+
 TENSORFLOW = "tensorflow"
 PYTORCH = "pytorch"
 
 
-def supported_backends() -> list[str]:
+def supported_backends() -> List[str]:
     """A function to return the list of backends that Nine Turn supports.
 
     Returns:
