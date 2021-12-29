@@ -148,8 +148,6 @@ def set_backend(backend=None) -> str:
     os.environ[_DGL_BACKEND] = backend_name
     global _BACKEND
     _BACKEND = backend_name
-    import dgl
-
     return backend_name
 
 

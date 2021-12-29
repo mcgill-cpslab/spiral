@@ -13,7 +13,8 @@
 # limitations under the License.
 # ==============================================================================
 """Dynamic import common functions based on backend."""
-
+# flake8: noqa
+# Dynamic import, no need for lint
 from nineturn.core.backends import PYTORCH, TENSORFLOW
 from nineturn.core.config import get_backend
 from nineturn.core.errors import BackendNotSupportedError
@@ -21,10 +22,10 @@ from nineturn.core.errors import BackendNotSupportedError
 this_backend = get_backend()
 
 if this_backend == TENSORFLOW:
-    from nineturn.core.tf_functions import to_tensor as to_tensor
+    from nineturn.core.tf_functions import _to_tensor as to_tensor
 
 elif this_backend == PYTORCH:
-    from nineturn.core.torch_functions import to_tensor as to_tensor
+    from nineturn.core.torch_functions import _to_tensor as to_tensor
 
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

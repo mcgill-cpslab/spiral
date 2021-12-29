@@ -12,17 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Datasets and dataloader for DTDG experiments"""
+"""Datasets and dataloader for DTDG experiments."""
 
-import sys
 from typing import Dict, List
 
 import numpy as np
 from numpy import ndarray
 from ogb.linkproppred import LinkPropPredDataset
+from ogb.nodeproppred import NodePropPredDataset
 
-from nineturn.core.config import get_backend, get_logger
-from nineturn.dtdg.types import CitationGraph, DiscreteGrapha
+from nineturn.core.config import get_logger
+from nineturn.dtdg.types import CitationGraph, DiscreteGraph
 
 logger = get_logger()
 
@@ -53,13 +53,32 @@ def preprocess_citation_graph(graph_data: Dict[str, ndarray], node_time: str) ->
     nodes = nodes[nodes[:, 1].argsort()]  # [id,t,feat..]]
     nodes_id_dict = {A: B for A, B in zip(nodes[:, 0], np.array(range(nodes.shape[0])))}
     sources = np.array([nodes_id_dict[s] for s in graph_data[EDGES][0]])
+    logger.debug("source shape")
+    logger.debug(sources.shape)
     dest = np.array([nodes_id_dict[s] for s in graph_data[EDGES][1]])
-    edge_time = np.array([nodes[s[0]][1] for s in sources])
+    edge_time = np.array([nodes[s][1] for s in sources])
     edges = np.vstack((edge_time, sources, dest)).transpose()  # [t,s,d]
-    return CitationGraph(edges, nodes, timestamps)
+    edges = edges[edges[:, 0].argsort()]
+    return CitationGraph(edges, nodes[:, 1:], timestamps)
 
 
-OGB_DATASETS = {'ogbl-citation2': (preprocess_citation_graph, 'node_year')}
+def _ogb_linkdata_loader(name: str) -> Dict:
+    dataset = LinkPropPredDataset(name)[0]
+    return dataset
+
+
+def _ogb_nodedata_loader(name: str) -> Dict:
+    graph, label = NodePropPredDataset(name)[0]
+    nodes = graph[NODES]
+    nodes = np.hstack((nodes, label))
+    graph[NODES] = nodes
+    return graph
+
+
+OGB_DATASETS = {
+    'ogbl-citation2': (_ogb_linkdata_loader, preprocess_citation_graph, 'node_year'),
+    'ogbn-arxiv': (_ogb_nodedata_loader, preprocess_citation_graph, 'node_year'),
+}
 # A dict with dataset name as key, the tuple of preporcess method and time feature name as value
 
 
@@ -69,7 +88,7 @@ def supported_ogb_datasets() -> List[str]:
     Returns:
         A list of obg dataset names
     """
-    return OGB_DATASETS.keys()
+    return list(OGB_DATASETS)
 
 
 def ogb_dataset(name: str) -> DiscreteGraph:
@@ -83,7 +102,7 @@ def ogb_dataset(name: str) -> DiscreteGraph:
         logger.error("Dataset %s is not supported." % (name))
         raise SystemExit('Fatal error happens!')
 
-    dataset = LinkPropPredDataset(name=name)[0]
-    preprocess, time_feat = OGB_DATASETS[name]
+    downloader, preprocess, time_feat = OGB_DATASETS[name]
+    dataset = downloader(name=name)
     this_graph = preprocess(dataset, time_feat)
     return this_graph

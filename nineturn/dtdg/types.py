@@ -27,7 +27,7 @@ from numpy import ndarray
 from nineturn.core import commonF
 from nineturn.core.config import get_logger
 from nineturn.core.errors import DimensionError, ValueNotSortedError
-from nineturn.core.utils import is_sorted
+from nineturn.core.utils import get_anchor_position, is_sorted
 
 TIME_D = 0  # position of time in nodes and edges table
 SOURCE = 1  # position of source in edges table
@@ -72,7 +72,8 @@ class DiscreteGraph(ABC):
         pass
 
     @abstractmethod
-    def dispatcher(t: int) -> Snapshot:
+    def dispatcher(self, t: int) -> Snapshot:
+        """Return the snapshot observed at the input time index."""
         pass
 
 
@@ -88,7 +89,8 @@ class VEInvariantDTDG(DiscreteGraph):
 
         Args:
             edges: a numpy.ndarray of edges with shape (|E|,3+num_features). Each row is an edge with the first entry to
-            be the timestamp index,the second and the third entry to be the source and destination index corresponding to the row index in the nodes table.
+              be the timestamp index,the second and the third entry to be the source and destination index corresponding
+              to the row index in the nodes table.
             nodes: a numpy.ndarray of node features with shape (|V|, 1+num_features). Each row is a node and the first
               entry is the timestamp index.
             timestamps: a numpy.ndarray of timestamps with shape (1, num_observations). This array should be sorted
@@ -103,10 +105,10 @@ class VEInvariantDTDG(DiscreteGraph):
         error_message = """The second dimension of {entity} should be greater than or equal to {value}."""
         not_sorted_error = """The input {entity} should be sorted based on the its time index."""
         if edges.shape[1] < self.edge_dimension:
-            raise DimensionError(error_message.format(entity="edges", value=edge_dimension))
+            raise DimensionError(error_message.format(entity="edges", value=self.edge_dimension))
 
         if nodes.shape[1] < self.node_dimension:
-            raise DimensionError(error_message.format(entity="nodes", value=node_dimension))
+            raise DimensionError(error_message.format(entity="nodes", value=self.node_dimension))
 
         if not is_sorted(timestamps):
             raise ValueNotSortedError(not_sorted_error.format(entity="timestamps"))
@@ -120,11 +122,13 @@ class VEInvariantDTDG(DiscreteGraph):
         self.nodes = nodes
         self.edges = edges
         self.timestamps = timestamps
+        self._node_time_anchors = get_anchor_position(nodes[:, TIME_D], range(len(self.timestamps)))
+        self._edge_time_anchors = get_anchor_position(edges[:, TIME_D], range(len(self.timestamps)))
 
     def dispatcher(self, t: int) -> Snapshot:
         """Return a snapshot for the input time index."""
-        this_edges = self.edges[self.edges[:, TIME_D] <= t]
-        this_nodes = self.nodes[self.nodes[:, TIME_D] <= t]
+        this_edges = self.edges[: self._edge_time_anchors[t], :]
+        this_nodes = self.nodes[: self._node_time_anchors[t], :]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
         observation = dgl.graph((src, dst))
@@ -137,6 +141,7 @@ class VEInvariantDTDG(DiscreteGraph):
         return Snapshot(observation, t)
 
     def __len__(self) -> int:
+        """Return the number of snapshots in this DTDG."""
         return len(self.timestamps)
 
 
@@ -152,7 +157,8 @@ class CitationGraph(VEInvariantDTDG):
 
         Args:
             edges: a numpy.ndarray of edges with shape (|E|,3+num_features). Each row is an edge with the first entry to
-            be the timestamp index,the second and the third entry to be the source and destination index corresponding to the row index in the nodes table.
+              be the timestamp index,the second and the third entry to be the source and destination index corresponding
+              to the row index in the nodes table.
             nodes: a numpy.ndarray of node features with shape (|V|, 1+num_features). Each row is a node and the first
               entry is the timestamp index.
             timestamps: a numpy.ndarray of timestamps with shape (1, num_observations). This array should be sorted
@@ -169,8 +175,8 @@ class CitationGraph(VEInvariantDTDG):
 
         For citation graph, the node feature has previous year's citation as the last node feature.
         """
-        this_edges = self.edges[self.edges[:, TIME_D] <= t]
-        this_nodes = self.nodes[self.nodes[:, TIME_D] <= t]
+        this_edges = self.edges[: self._edge_time_anchors[t], :]
+        this_nodes = self.nodes[: self._node_time_anchors[t], :]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
         observation = dgl.graph((src, dst))

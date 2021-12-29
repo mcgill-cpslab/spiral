@@ -9,6 +9,8 @@ from tests.core.common_functions import *
 
 logger = get_logger()
 
+logger.info("Testing backends setting functions.")
+
 
 def test_set_backend_tf_by_env():
     clear_background()

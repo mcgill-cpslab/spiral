@@ -29,3 +29,25 @@ def is_sorted(array_to_check: array) -> bool:
         Boolean
     """
     return np.all(array_to_check[:-1] <= array_to_check[1:])
+
+
+def get_anchor_position(arr_to_search: array, anchors: array) -> array:
+    """Get the position of anchors in a sorted array.
+
+    Args:
+        arr_to_search: an sorted numpy array
+        anchors: an numpy array with unique values. Each values should present in the arr_to_search.
+
+    Return:
+        anchor's last position in arr_to_search
+
+    Example:
+        >>> a = np.array([0,0,1,1,2,3,3,3,4,5])
+        >>> b = np.unique(a)
+        >>> c = get_anchor_position(a,b)
+        >>> c
+        array([1, 3, 4, 7, 8, 9])
+    """
+    anchor_position = np.searchsorted(arr_to_search, anchors)[1:]
+    last_anchor = arr_to_search.shape[0]
+    return np.hstack((anchor_position, [last_anchor]))

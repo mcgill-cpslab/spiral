@@ -12,6 +12,7 @@ lint:
 	mypy $(sources) tests
 
 unittest:
+	poetry install -v
 	pytest
 
 coverage:
