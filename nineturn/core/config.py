@@ -27,9 +27,12 @@ import logging
 import logging.config
 import os
 import sys
+from typing import Optional
 
 from nineturn.core.backends import PYTORCH, TENSORFLOW, supported_backends
 
+if '_BACKEND' not in globals():
+    _BACKEND = None
 _NINETURN_BACKEND = "NINETURN_BACKEND"
 _DGL_BACKEND = "DGLBACKEND"
 _TENSORFLOW = TENSORFLOW
@@ -143,9 +146,14 @@ def set_backend(backend=None) -> str:
         backend_name = _PYTORCH
     logger.info("Using Nine Turn Backend: %s" % (backend_name))
     os.environ[_DGL_BACKEND] = backend_name
-    modules_to_clear = [k for k in sys.modules.keys() if 'dgl' in k]
-    for k in modules_to_clear:
-        del sys.modules[k]
-    # import dgl
+    global _BACKEND
+    _BACKEND = backend_name
+    import dgl
 
     return backend_name
+
+
+def get_backend() -> Optional[str]:
+    """Return the current backend."""
+    global _BACKEND
+    return _BACKEND
