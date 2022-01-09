@@ -55,6 +55,18 @@ class Snapshot:
         self.observation = observation
         self.t = t
 
+    def num_node_features(self)->int:
+        return self.observation.ndata[FEAT].shape[1]
+
+    def num_edge_features(self)->int:
+        return self.observation.edata[FEAT].shape[1]
+
+    def node_feature(self)->int:
+        return self.observation.ndata[FEAT]
+
+    def edge_feature(self)->int:
+        return self.observation.edata[FEAT]
+
 
 class DiscreteGraph(ABC):
     """This is an abstract class for Discrete Time Dynamic Graph collection.
@@ -129,9 +141,10 @@ class VEInvariantDTDG(DiscreteGraph):
         """Return a snapshot for the input time index."""
         this_edges = self.edges[: self._edge_time_anchors[t], :]
         this_nodes = self.nodes[: self._node_time_anchors[t], :]
+        num_nodes = this_nodes.shape[0]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
-        observation = dgl.graph((src, dst))
+        observation = dgl.graph((src, dst), num_nodes=num_nodes)
         if this_edges.shape[1] > self.edge_dimension:
             observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
 
@@ -179,7 +192,8 @@ class CitationGraph(VEInvariantDTDG):
         this_nodes = self.nodes[: self._node_time_anchors[t], :]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
-        observation = dgl.graph((src, dst))
+        num_nodes = this_nodes.shape[0]
+        observation = dgl.graph((src, dst), num_nodes=num_nodes)
         if this_edges.shape[1] > self.edge_dimension:
             observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
 
@@ -190,6 +204,5 @@ class CitationGraph(VEInvariantDTDG):
             citation[: previous_citation.shape[0], 0] = previous_citation
 
         this_nodes = np.hstack((this_nodes, citation))
-
         observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :])
         return Snapshot(observation, t)

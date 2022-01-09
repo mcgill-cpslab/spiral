@@ -52,10 +52,16 @@ def preprocess_citation_graph(graph_data: Dict[str, ndarray], node_time: str) ->
     nodes = np.hstack((node_id, node_time_index, graph_data[NODES]))
     nodes = nodes[nodes[:, 1].argsort()]  # [id,t,feat..]]
     nodes_id_dict = {A: B for A, B in zip(nodes[:, 0], np.array(range(nodes.shape[0])))}
-    sources = np.array([nodes_id_dict[s] for s in graph_data[EDGES][0]])
-    logger.debug("source shape")
-    logger.debug(sources.shape)
-    dest = np.array([nodes_id_dict[s] for s in graph_data[EDGES][1]])
+    num_edges = len(graph_data[EDGES][0])
+    sources = []
+    dest = []
+    for i in range(num_edges):
+        n1 = nodes_id_dict[graph_data[EDGES][0][i]]
+        n2 = nodes_id_dict[graph_data[EDGES][1][i]]
+        sources.append(max(n1, n2))
+        dest.append(min(n1,n2))
+    sources = np.array(sources)
+    dest = np.array(dest)
     edge_time = np.array([nodes[s][1] for s in sources])
     edges = np.vstack((edge_time, sources, dest)).transpose()  # [t,s,d]
     edges = edges[edges[:, 0].argsort()]

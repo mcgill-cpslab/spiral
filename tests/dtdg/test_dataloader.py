@@ -18,3 +18,5 @@ def test_ogb_dataset_tf():
 
     data_to_test = supported_ogb_datasets()[1]
     this_graph = ogb_dataset(data_to_test)
+    for s in range(len(this_graph)):
+        this_graph.dispatcher(s)
