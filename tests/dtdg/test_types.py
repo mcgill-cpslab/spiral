@@ -16,11 +16,10 @@ times = np.array([2006, 2007, 2008])
 def test_snapshot_torch():
     """Test that Snapshot could support different backend."""
     clear_background()
-    from nineturn.core.config import set_backend, get_logger
+    from nineturn.core.config import set_backend
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    logger = get_logger()
     from nineturn.dtdg.types import Snapshot, CitationGraph
     import dgl
 
@@ -33,11 +32,10 @@ def test_snapshot_torch():
 def test_citation_graph_torch():
     """Test that citation graph could support different backend."""
     clear_background()
-    from nineturn.core.config import set_backend, get_logger
+    from nineturn.core.config import set_backend
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    logger = get_logger()
     from nineturn.dtdg.types import Snapshot, CitationGraph
     import dgl
 
@@ -57,11 +55,10 @@ def test_citation_graph_torch():
 
 def test_snapshot_tf():
     clear_background()
-    from nineturn.core.config import set_backend, get_logger
+    from nineturn.core.config import set_backend
     from nineturn.core.backends import TENSORFLOW, PYTORCH
 
     set_backend(TENSORFLOW)
-    logger = get_logger()
     from nineturn.dtdg.types import Snapshot
     import dgl
 
@@ -75,10 +72,9 @@ def test_snapshot_tf():
 def test_citation_graph_tf():
     clear_background()
     """Test that citation graph could support different backend."""
-    from nineturn.core.config import set_backend, get_logger
+    from nineturn.core.config import set_backend
     from nineturn.core.backends import TENSORFLOW
 
-    logger = get_logger()
     set_backend(TENSORFLOW)
     from nineturn.dtdg.types import CitationGraph
 
