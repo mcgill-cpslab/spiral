@@ -16,13 +16,14 @@
 
 This file define the types required for dtdg package
 """
-
+import copy
 from abc import ABC, abstractmethod
 from typing import List
 
 import dgl
 import numpy as np
 from dgl import DGLGraph
+from dgl import backend as F
 from numpy import ndarray
 
 from nineturn.core import commonF
@@ -54,7 +55,7 @@ class Snapshot:
     def __init__(self, observation: DGLGraph, t: int):
         """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
         self.observation = observation
-        self.t = t
+        self.t = commonF.to_tensor(np.array([t]))
 
     def num_node_features(self) -> int:
         """Return the number of node features."""
@@ -75,6 +76,32 @@ class Snapshot:
     def num_nodes(self) -> int:
         """Return the number of nodes in the snapshot."""
         return self.observation.ndata[FEAT].shape[0]
+
+    @property
+    def device(self):
+        return self.observation.device
+
+    def to(self, device, **kwargs):  # pylint: disable=invalid-name
+        """Move the snapshot to the targeted device (cpu/gpu).
+        
+        If the graph is already on the specified device, the function directly returns it.
+        Otherwise, it returns a cloned graph on the specified device.
+        Parameters
+        
+        Args:
+            device : Framework-specific device context object
+                The context to move data to (e.g., ``torch.device``).
+            kwargs : Key-word arguments.
+                Key-word arguments fed to the framework copy function.
+        """
+        if device is None or self.device == device:
+            return self
+
+        ret = copy.copy(self)
+        ret.observation = self.observation.to(device, **kwargs)
+        ret.t = F.copy_to(self.t, device, **kwargs)
+        return ret
+
 
 
 class BatchedSnapshot:

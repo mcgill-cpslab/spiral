@@ -7,11 +7,14 @@ import torch
 import tensorflow as tf
 import numpy as np
 from tests.core.common_functions import *
+from nineturn.core.logger import get_logger
+
 
 edges = np.array([[0, 0, 1], [0, 0, 2], [1, 3, 0], [2, 4, 1]])
 nodes = np.array([[0, 3], [0, 2], [0, 5], [1, 4], [2, 9]])
 times = np.array([2006, 2007, 2008])
 
+logger = get_logger()
 
 def test_snapshot_torch():
     """Test that Snapshot could support different backend."""
@@ -27,6 +30,13 @@ def test_snapshot_torch():
     dst_ids = torch.tensor([1, 2, 3])
     g = dgl.graph((src_ids, dst_ids))
     sn = Snapshot(g, 1)
+    logger.info(f"sn in in {sn.device}")
+    if torch.cuda.is_available():
+        dev = "cuda:0"
+    else:
+        dev = "cpu"
+    n_sn = sn.to(dev)
+    assert n_sn.observation.device == torch.device(dev)
 
 
 def test_citation_graph_torch():
