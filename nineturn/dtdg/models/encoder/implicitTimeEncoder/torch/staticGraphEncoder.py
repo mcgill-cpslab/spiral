@@ -28,22 +28,24 @@ from nineturn.dtdg.types import BatchedSnapshot, Snapshot
 
 logger = get_logger()
 
-def _check_mini_batch_mode(mini_batch_mode:bool, input_snapshot:Union[Snapshot, BatchedSnapshot]):
+
+def _check_mini_batch_mode(mini_batch_mode: bool, input_snapshot: Union[Snapshot, BatchedSnapshot]):
 
     if (not mini_batch_mode) and isinstance(input_snapshot, BatchedSnapshot):
-            error_message = f"""
+        error_message = """
                 Please set mini batch mode to True to perform DGLBlock based batch training.
             """
-            logger.error(error_message)
-            raise DimensionError(error_message)
+        logger.error(error_message)
+        raise DimensionError(error_message)
     elif mini_batch_mode and isinstance(input_snapshot, Snapshot):
-            error_message = f"""
+        error_message = """
                 Please set mini batch mode to False to perform non DGLBlock training.
             """
-            logger.error(error_message)
-            raise DimensionError(error_message)
+        logger.error(error_message)
+        raise DimensionError(error_message)
     else:
         return True
+
 
 class StaticGraphEncoder(nn.Module):
     """Prototype of static graph encoder."""
@@ -192,11 +194,9 @@ class SGCN(StaticGraphEncoder):
         """
         snapshot, dst_node_ids = in_sample
         if isinstance(snapshot, BatchedSnapshot):
-                error_message = f"""
-                    GraphSage does not support DGLBlock based batch training.
-                """
-                logger.error(error_message)
-                raise DimensionError(error_message)
+            error_message = "SGCN does not support DGLBlock based batch training."
+            logger.error(error_message)
+            raise DimensionError(error_message)
         else:
             g = snapshot.observation
             h = snapshot.node_feature().float()
@@ -273,7 +273,7 @@ class GAT(StaticGraphEncoder):
             return self.mini_batch_forward(_input)
         else:
             return self.single_graph_forward(_input)
-    
+
 
 class GraphSage(StaticGraphEncoder):
     """A wrapper of DGL SAGEConv."""
@@ -294,11 +294,9 @@ class GraphSage(StaticGraphEncoder):
         """
         snapshot, dst_node_ids = in_sample
         if isinstance(snapshot, BatchedSnapshot):
-                error_message = f"""
-                    GraphSage does not support DGLBlock based batch training.
-                """
-                logger.error(error_message)
-                raise DimensionError(error_message)
+            error_message = "GraphSage does not support DGLBlock based batch training."
+            logger.error(error_message)
+            raise DimensionError(error_message)
         else:
             g = snapshot.observation
             h = snapshot.node_feature().float()
