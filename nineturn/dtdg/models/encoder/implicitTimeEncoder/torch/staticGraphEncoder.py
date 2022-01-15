@@ -15,7 +15,7 @@
 """The models are adopted from https://github.com/dmlc/dgl/blob/master/examples/pytorch/gcn/gcn.py."""
 
 from abc import abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Union
 
 import torch
 import torch.nn as nn
@@ -28,6 +28,22 @@ from nineturn.dtdg.types import BatchedSnapshot, Snapshot
 
 logger = get_logger()
 
+def _check_mini_batch_mode(mini_batch_mode:bool, input_snapshot:Union[Snapshot, BatchedSnapshot]):
+
+    if (not mini_batch_mode) and isinstance(input_snapshot, BatchedSnapshot):
+            error_message = f"""
+                Please set mini batch mode to True to perform DGLBlock based batch training.
+            """
+            logger.error(error_message)
+            raise DimensionError(error_message)
+    elif mini_batch_mode and isinstance(input_snapshot, Snapshot):
+            error_message = f"""
+                Please set mini batch mode to False to perform non DGLBlock training.
+            """
+            logger.error(error_message)
+            raise DimensionError(error_message)
+    else:
+        return True
 
 class StaticGraphEncoder(nn.Module):
     """Prototype of static graph encoder."""
@@ -140,6 +156,7 @@ class GCN(StaticGraphEncoder):
         It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
         If self.mini_batch is true, apply mini_batch_forward(). Otherwise, apply single_graph_forward().
         """
+        _check_mini_batch_mode(self.mini_batch, _input[0])
         if self.mini_batch:
             return self.mini_batch_forward(_input)
         else:
@@ -174,9 +191,15 @@ class SGCN(StaticGraphEncoder):
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         snapshot, dst_node_ids = in_sample
-        g = snapshot.observation
-        g = add_self_loop(g)
-        h = snapshot.node_feature().float()
+        if isinstance(snapshot, BatchedSnapshot):
+                error_message = f"""
+                    GraphSage does not support DGLBlock based batch training.
+                """
+                logger.error(error_message)
+                raise DimensionError(error_message)
+        else:
+            g = snapshot.observation
+            h = snapshot.node_feature().float()
         h = self.layers[0](g, h)
         return (h, dst_node_ids)
 
@@ -187,7 +210,7 @@ class GAT(StaticGraphEncoder):
     def __init__(self, heads: List[int], in_feat: int, n_hidden: int, **kwargs):
         """Create a multiplayer GAT based on GATConv."""
         super().__init__()
-        n_layers = len(heads)
+        self.n_layers = len(heads)
         if heads[-1] > 1:
             logger.warning(
                 f"""The head of attention for the last layer is {heads[-1]} which is greater than 1, the output
@@ -196,12 +219,12 @@ class GAT(StaticGraphEncoder):
         # input projection (no residual)
         self.layers.append(GATConv(in_feat, n_hidden, heads[0], **kwargs))
         # hidden layers
-        for i in range(1, n_layers):
+        for i in range(1, self.n_layers):
             # due to multi-head, the in_dim = num_hidden * num_heads
             self.layers.append(GATConv(n_hidden * heads[i - 1], n_hidden, heads[i], **kwargs))
 
-    def forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[torch.Tensor, List]:
-        """Forward function.
+    def single_graph_forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[torch.Tensor, List]:
+        """Forward function in normal mode.
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
@@ -211,13 +234,46 @@ class GAT(StaticGraphEncoder):
         """
         snapshot, dst_node_ids = in_sample
         g = snapshot.observation
-        g = add_self_loop(g)
         h = snapshot.node_feature().float()
         for layer in self.layers:
             h = layer(g, h)
-            h = h.view(-1, h.size(1) * h.size(2))
         return (h, dst_node_ids)
 
+    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List]) -> Tuple[torch.Tensor, List]:
+        """Forward function in batch mode.
+
+        Args:
+            in_sample: tuple, first entry is a BatchedSnapshot, second entry is the list[int] of targeted node ids.
+
+        Return:
+            tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
+        """
+        snapshot, dst_node_ids = in_sample
+        if snapshot.num_blocks() != self.n_layers:
+            error_message = f"""
+                The input blocked sample has {snapshot.num_blocks()},
+                but we are expecting {self.n_layers} which is the same as the number of GCN layers
+            """
+            logger.error(error_message)
+            raise DimensionError(error_message)
+        blocks = snapshot.observation
+        h = snapshot.feature.float()
+        for i in range(self.n_layers):
+            h = self.layers[i](blocks[i], h)
+        return (h, dst_node_ids)
+
+    def forward(self, _input):
+        """Forward function.
+
+        It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
+        If self.mini_batch is true, apply mini_batch_forward(). Otherwise, apply single_graph_forward().
+        """
+        _check_mini_batch_mode(self.mini_batch, _input[0])
+        if self.mini_batch:
+            return self.mini_batch_forward(_input)
+        else:
+            return self.single_graph_forward(_input)
+    
 
 class GraphSage(StaticGraphEncoder):
     """A wrapper of DGL SAGEConv."""
@@ -237,8 +293,14 @@ class GraphSage(StaticGraphEncoder):
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         snapshot, dst_node_ids = in_sample
-        g = snapshot.observation
-        g = add_self_loop(g)
-        h = snapshot.node_feature().float()
+        if isinstance(snapshot, BatchedSnapshot):
+                error_message = f"""
+                    GraphSage does not support DGLBlock based batch training.
+                """
+                logger.error(error_message)
+                raise DimensionError(error_message)
+        else:
+            g = snapshot.observation
+            h = snapshot.node_feature().float()
         h = self.layers[0](g, h)
         return (h, dst_node_ids)

@@ -19,11 +19,12 @@ from nineturn.automl.torch.model_assembler import assembler
 import dgl
 
 
-def loss_fn(predict, label):
-    return torch.mean(torch.abs(torch.log1p(predict) - torch.log1p(label)))
+#def loss_fn(predict, label):
+#    return torch.mean(torch.abs(predict - label))
 
+loss_fn = torch.nn.MSELoss()
 
-sampler = dgl.dataloading.MultiLayerFullNeighborSampler(2)
+sampler = dgl.dataloading.MultiLayerFullNeighborSampler(3)
 
 
 if __name__ == '__main__':
@@ -33,7 +34,7 @@ if __name__ == '__main__':
     this_logger = logging.getLogger('citation_predictoin_pipeline')
     this_logger.setLevel(logging.INFO)
     # create file handler which logs even debug messages
-    fh = logging.FileHandler('test2.log')
+    fh = logging.FileHandler('node_wise_batch.log')
     fh.setLevel(logging.DEBUG)
     this_logger.addHandler(fh)
     #--------------------------------------------------------
@@ -50,15 +51,13 @@ if __name__ == '__main__':
     n_nodes = this_graph.dispatcher(n_snapshot -1).observation.num_nodes()
     this_snapshot = this_graph.dispatcher(20)
     in_dim = this_snapshot.num_node_features()
-    hidden_dim = 32
-    num_GNN_layers = 2
+    hidden_dim = 200
+    num_GNN_layers = 3
     num_RNN_layers = 2
     gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True, dropout=0.2).to(device)
-    #gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True).to(device)
     #gnn = GAT([1], in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True).to(device)
-    #gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=F.leaky_relu).to(device)
-    decoder = LSTM( hidden_dim, 10,n_nodes)
-    #this_model = LSTM( in_dim, 10,n_nodes,device).to(device)
+    decoder = LSTM( hidden_dim, 20,n_nodes)
+    #this_model = LSTM( in_dim, 20,n_nodes,device).to(device)
     this_model = assembler(gnn, decoder).to(device)
     #---------------------------------------------------------- 
 
@@ -67,17 +66,17 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(
         [{"params": this_model.parameters()}], lr=1e-3
     )
-    scheduler = ReduceLROnPlateau(optimizer, 'min')
+    #scheduler = ReduceLROnPlateau(optimizer, 'min')
     #---------------------------------------------------------
     
     test_loss_list =[]
     eval_loss_list = []
     all_predictions = []
-    for epoch in range(2):
+    for epoch in range(400):
         this_model[1].memory.reset_state()
-        this_model[0].set_mini_batch(True)
+        #this_model[0].set_mini_batch(True)
         this_model[1].set_mini_batch(True)
-        for t in range(2,3):
+        for t in range(2,n_snapshot-3):
             this_snapshot = this_graph.dispatcher(t, True)
             next_snapshot = this_graph.dispatcher(t+1, True)
             node_samples = torch.arange(this_snapshot.num_nodes())
@@ -87,10 +86,10 @@ if __name__ == '__main__':
             collator = dgl.dataloading.NodeCollator(this_snapshot.observation, node_samples, sampler)
             dataloader = dgl.dataloading.NodeDataLoader(
                 this_snapshot.observation, node_samples, sampler,
-                batch_size=100,
+                batch_size=500,
                 shuffle=True,
                 drop_last=False,
-                num_workers=4)
+                num_workers=1)
             for in_nodes, out_nodes, blocks in dataloader:
                 this_model.train()
                 optimizer.zero_grad()
@@ -116,7 +115,7 @@ if __name__ == '__main__':
         predict = this_model.forward((this_snapshot, node_samples)).to(device)
         label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1].float()
         loss = loss_fn(predict.squeeze(), label).to(device)
-        scheduler.step(loss)
+        #scheduler.step(loss)
         test_loss_list.append(loss.item())
         this_snapshot = this_graph.dispatcher(n_snapshot-2, True)
         next_snapshot = this_graph.dispatcher(n_snapshot-1, True)
