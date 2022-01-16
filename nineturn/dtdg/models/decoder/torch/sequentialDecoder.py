@@ -50,7 +50,7 @@ class NodeMemory:
 class LSTM(nn.Module):
     """LSTM sequential decoder."""
 
-    def __init__(self, input_d, hidden_d, n_nodes):
+    def __init__(self, input_d, hidden_d, n_nodes, device):
         """Create a LSTM sequential decoder.
 
         Args:
@@ -66,6 +66,7 @@ class LSTM(nn.Module):
         self.hidden_d = hidden_d
         self.mini_batch = False
         self.memory = NodeMemory(n_nodes, hidden_d)
+        self.device = device
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""
@@ -80,7 +81,10 @@ class LSTM(nn.Module):
         node_embs, ids = in_state
         if not self.mini_batch:
             node_embs = node_embs[ids]
-        out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), self.memory.get_memory(ids))
+        h,c=self.memory.get_memory(ids)
+        h = h.to(self.device)
+        c = c.to(self.device)
+        out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), (h,c))
         out = self.linear(out_sequential)
-        self.memory.update_memory(h.detach(), c.detach(), ids)
+        self.memory.update_memory(h.detach().cpu(), c.detach().cpu(), ids)
         return out
