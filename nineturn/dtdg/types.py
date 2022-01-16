@@ -79,15 +79,15 @@ class Snapshot:
 
     @property
     def device(self):
+        """Which device it is currently at."""
         return self.observation.device
 
-    def to(self, device, **kwargs):  # pylint: disable=invalid-name
+    def to(self, device, **kwargs):  # pylint: disable_invalide_name
         """Move the snapshot to the targeted device (cpu/gpu).
-        
+
         If the graph is already on the specified device, the function directly returns it.
         Otherwise, it returns a cloned graph on the specified device.
-        Parameters
-        
+
         Args:
             device : Framework-specific device context object
                 The context to move data to (e.g., ``torch.device``).
@@ -101,7 +101,6 @@ class Snapshot:
         ret.observation = self.observation.to(device, **kwargs)
         ret.t = F.copy_to(self.t, device, **kwargs)
         return ret
-
 
 
 class BatchedSnapshot:

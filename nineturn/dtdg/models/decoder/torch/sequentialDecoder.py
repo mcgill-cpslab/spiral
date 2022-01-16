@@ -57,6 +57,7 @@ class LSTM(nn.Module):
             input_d: int, input dimension.
             hidden_d: int, number of hidden cells.
             n_nodes: int, number of nodes.
+            device: str or torch.device, the device this model will run. Mainly for node memory.
         """
         super().__init__()
         self.input_d = input_d
@@ -81,10 +82,10 @@ class LSTM(nn.Module):
         node_embs, ids = in_state
         if not self.mini_batch:
             node_embs = node_embs[ids]
-        h,c=self.memory.get_memory(ids)
+        h, c = self.memory.get_memory(ids)
         h = h.to(self.device)
         c = c.to(self.device)
-        out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), (h,c))
+        out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), (h, c))
         out = self.linear(out_sequential)
         self.memory.update_memory(h.detach().cpu(), c.detach().cpu(), ids)
         return out
