@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The Nine Turn Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,17 +16,19 @@
 
 This file define the types required for dtdg package
 """
-
+import copy
 from abc import ABC, abstractmethod
+from typing import List
 
 import dgl
 import numpy as np
 from dgl import DGLGraph
+from dgl import backend as F
 from numpy import ndarray
 
 from nineturn.core import commonF
-from nineturn.core.config import get_logger
 from nineturn.core.errors import DimensionError, ValueNotSortedError
+from nineturn.core.logger import get_logger
 from nineturn.core.utils import get_anchor_position, is_sorted
 
 TIME_D = 0  # position of time in nodes and edges table
@@ -53,7 +55,66 @@ class Snapshot:
     def __init__(self, observation: DGLGraph, t: int):
         """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
         self.observation = observation
+        self.t = commonF.to_tensor(np.array([t]))
+
+    def num_node_features(self) -> int:
+        """Return the number of node features."""
+        return self.observation.ndata[FEAT].shape[1]
+
+    def num_edge_features(self) -> int:
+        """Return the number of edge features."""
+        return self.observation.edata[FEAT].shape[1]
+
+    def node_feature(self):
+        """Return the node features tensor."""
+        return self.observation.ndata[FEAT]
+
+    def edge_feature(self):
+        """Return the edge feature tensor."""
+        return self.observation.edata[FEAT]
+
+    def num_nodes(self) -> int:
+        """Return the number of nodes in the snapshot."""
+        return self.observation.ndata[FEAT].shape[0]
+
+    @property
+    def device(self):
+        """Which device it is currently at."""
+        return self.observation.device
+
+    def to(self, device, **kwargs):  # pylint: disable_invalide_name
+        """Move the snapshot to the targeted device (cpu/gpu).
+
+        If the graph is already on the specified device, the function directly returns it.
+        Otherwise, it returns a cloned graph on the specified device.
+
+        Args:
+            device : Framework-specific device context object
+                The context to move data to (e.g., ``torch.device``).
+            kwargs : Key-word arguments.
+                Key-word arguments fed to the framework copy function.
+        """
+        if device is None or self.device == device:
+            return self
+
+        ret = copy.copy(self)
+        ret.observation = self.observation.to(device, **kwargs)
+        ret.t = F.copy_to(self.t, device, **kwargs)
+        return ret
+
+
+class BatchedSnapshot:
+    """Mainly to support mini batch training with dgl."""
+
+    def __init__(self, observation: List[DGLGraph], feature, t: int):
+        """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
+        self.observation = observation
         self.t = t
+        self.feature = feature
+
+    def num_blocks(self) -> int:
+        """Return the number of DGLBlocks in the BatchedSnapshot."""
+        return len(self.observation)
 
 
 class DiscreteGraph(ABC):
@@ -129,9 +190,10 @@ class VEInvariantDTDG(DiscreteGraph):
         """Return a snapshot for the input time index."""
         this_edges = self.edges[: self._edge_time_anchors[t], :]
         this_nodes = self.nodes[: self._node_time_anchors[t], :]
+        num_nodes = this_nodes.shape[0]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
-        observation = dgl.graph((src, dst))
+        observation = dgl.graph((src, dst), num_nodes=num_nodes)
         if this_edges.shape[1] > self.edge_dimension:
             observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
 
@@ -170,7 +232,7 @@ class CitationGraph(VEInvariantDTDG):
         """
         super().__init__(edges, nodes, timestamps)
 
-    def dispatcher(self, t: int) -> Snapshot:
+    def dispatcher(self, t: int, add_self_loop: bool = False) -> Snapshot:
         """Return a snapshot for the input time index.
 
         For citation graph, the node feature has previous year's citation as the last node feature.
@@ -179,7 +241,8 @@ class CitationGraph(VEInvariantDTDG):
         this_nodes = self.nodes[: self._node_time_anchors[t], :]
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
-        observation = dgl.graph((src, dst))
+        num_nodes = this_nodes.shape[0]
+        observation = dgl.graph((src, dst), num_nodes=num_nodes)
         if this_edges.shape[1] > self.edge_dimension:
             observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
 
@@ -190,6 +253,7 @@ class CitationGraph(VEInvariantDTDG):
             citation[: previous_citation.shape[0], 0] = previous_citation
 
         this_nodes = np.hstack((this_nodes, citation))
-
         observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :])
+        if add_self_loop:
+            observation = observation.add_self_loop()
         return Snapshot(observation, t)

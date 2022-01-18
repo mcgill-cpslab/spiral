@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The Nine Turn Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,18 +18,16 @@ This module define the runtime context which include backend when imported
 To use Nine Turn, you should always import this module and then dgl
 
 Example:
-    >>> from nineturn.core import config
+    >>> from nineturn.core.config import set_backend
+    >>> set_backend('tensorflow')
     >>> import dgl
 
 """
 import json
-import logging
-import logging.config
 import os
-import sys
-from typing import Optional
 
 from nineturn.core.backends import PYTORCH, TENSORFLOW, supported_backends
+from nineturn.core.logger import get_logger
 
 if '_BACKEND' not in globals():
     _BACKEND = None
@@ -45,67 +43,6 @@ _BACKEND_NOT_FOUND = f"""
 _BACKEND_NOT_SET = f"""Nine Turn backend is not set in either pipeline code, configuration file
     or environment variable. Assuming {_PYTORCH} for now.
     """
-
-
-class _ExcludeErrorsFilter(logging.Filter):
-    def filter(self, record):
-        """Only lets through log messages with log level below ERROR (numeric value: 40)."""
-        return record.levelno < 40
-
-
-format_string = "%(asctime)s,%(msecs)d %(levelname)-8s [%(pathname)s:%(lineno)d] %(message)s"
-
-LOGGING = {
-    "version": 1,
-    "disable_existing_loggers": "false",
-    'filters': {'exclude_errors': {'()': _ExcludeErrorsFilter}},
-    "formatters": {
-        "basic": {
-            "class": "logging.Formatter",
-            "datefmt": "%Y-%m-%d:%H:%M:%S",
-            "format": format_string,
-        }
-    },
-    'handlers': {
-        'console_stderr': {
-            # Sends log messages with log level ERROR or higher to stderr
-            'class': 'logging.StreamHandler',
-            'level': 'ERROR',
-            'formatter': 'basic',
-            'stream': sys.stderr,
-        },
-        'console_stdout': {
-            # Sends log messages with log level lower than ERROR to stdout
-            'class': 'logging.StreamHandler',
-            'level': 'INFO',
-            'formatter': 'basic',
-            'filters': ['exclude_errors'],
-            'stream': sys.stdout,
-        },
-        'file': {
-            # Sends all log messages to a file
-            'class': 'logging.FileHandler',
-            'level': 'DEBUG',
-            'formatter': 'basic',
-            'filename': 'nineturn.log',
-            'encoding': 'utf8',
-        },
-    },
-    'root': {
-        # In general, this should be kept at 'NOTSET'.
-        # Otherwise it would interfere with the log levels set for each handler.
-        'level': 'NOTSET',
-        'handlers': ['console_stderr', 'console_stdout', 'file'],
-    },
-}
-
-
-def get_logger():
-    """Internal function, return a logger specific to nine turn."""
-    logging.basicConfig()
-    logging.config.dictConfig(LOGGING)
-    return logging.getLogger()
-
 
 logger = get_logger()
 
@@ -144,14 +81,8 @@ def set_backend(backend=None) -> str:
     if backend_name not in supported_backends():
         logger.warning(_BACKEND_NOT_FOUND)
         backend_name = _PYTORCH
-    logger.info("Using Nine Turn Backend: %s" % (backend_name))
+    logger.debug("Using Nine Turn Backend: %s" % (backend_name))
     os.environ[_DGL_BACKEND] = backend_name
     global _BACKEND
     _BACKEND = backend_name
     return backend_name
-
-
-def get_backend() -> Optional[str]:
-    """Return the current backend."""
-    global _BACKEND
-    return _BACKEND

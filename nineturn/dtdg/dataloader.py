@@ -1,4 +1,4 @@
-# Copyright 2020 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2022 The Nine Turn Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,7 +21,7 @@ from numpy import ndarray
 from ogb.linkproppred import LinkPropPredDataset
 from ogb.nodeproppred import NodePropPredDataset
 
-from nineturn.core.config import get_logger
+from nineturn.core.logger import get_logger
 from nineturn.dtdg.types import CitationGraph, DiscreteGraph
 
 logger = get_logger()
@@ -52,10 +52,16 @@ def preprocess_citation_graph(graph_data: Dict[str, ndarray], node_time: str) ->
     nodes = np.hstack((node_id, node_time_index, graph_data[NODES]))
     nodes = nodes[nodes[:, 1].argsort()]  # [id,t,feat..]]
     nodes_id_dict = {A: B for A, B in zip(nodes[:, 0], np.array(range(nodes.shape[0])))}
-    sources = np.array([nodes_id_dict[s] for s in graph_data[EDGES][0]])
-    logger.debug("source shape")
-    logger.debug(sources.shape)
-    dest = np.array([nodes_id_dict[s] for s in graph_data[EDGES][1]])
+    num_edges = len(graph_data[EDGES][0])
+    tem_sources = []
+    tem_dest = []
+    for i in range(num_edges):
+        n1 = nodes_id_dict[graph_data[EDGES][0][i]]
+        n2 = nodes_id_dict[graph_data[EDGES][1][i]]
+        tem_sources.append(max(n1, n2))
+        tem_dest.append(min(n1, n2))
+    sources = np.array(tem_sources)
+    dest = np.array(tem_dest)
     edge_time = np.array([nodes[s][1] for s in sources])
     edges = np.vstack((edge_time, sources, dest)).transpose()  # [t,s,d]
     edges = edges[edges[:, 0].argsort()]
