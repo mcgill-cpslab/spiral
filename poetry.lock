@@ -1360,6 +1360,14 @@ python-versions = ">=3.6.2"
 typing-extensions = "*"
 
 [[package]]
+name = "torchfm"
+version = "0.7.0"
+description = "PyTorch implementation of Factorization Machine Models"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "tox"
 version = "3.24.4"
 description = "tox is a generic virtualenv management and test command line tool"
@@ -1524,7 +1532,7 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "cf211d89561e5d430c4d712c5433c21e2ee0296da3552f0356b35f2cdd4868ea"
+content-hash = "72db321aa64e6849276b278057260ee63fdd9711ce27b252e71f9764696ba95e"
 
 [metadata.files]
 absl-py = [
@@ -2480,6 +2488,9 @@ torch = [
     {file = "torch-1.10.0-cp39-cp39-win_amd64.whl", hash = "sha256:ca2c88fa4376e2648785029ab108e6e7abd784eb6535fc6036004b9254f9f7c1"},
     {file = "torch-1.10.0-cp39-none-macosx_10_9_x86_64.whl", hash = "sha256:d6ef87470b44df9970e84542547d5ba7720bb89616602441df555a39b124e2bc"},
     {file = "torch-1.10.0-cp39-none-macosx_11_0_arm64.whl", hash = "sha256:eea675ec01ec4b4a0655fd2984f166a5ca3b933dae6ad4eb4e52eba7026dc176"},
+]
+torchfm = [
+    {file = "torchfm-0.7.0.tar.gz", hash = "sha256:215838acff337f0abbeaee8e0f3530556a7d524cf35564d0bb6a0d95055a5f52"},
 ]
 tox = [
     {file = "tox-3.24.4-py2.py3-none-any.whl", hash = "sha256:5e274227a53dc9ef856767c21867377ba395992549f02ce55eb549f9fb9a8d10"},

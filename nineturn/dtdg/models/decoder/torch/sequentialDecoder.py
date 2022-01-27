@@ -14,14 +14,16 @@
 # ==============================================================================
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
 
+from abc import abstractmethod
+from typing import Tuple, Union,List
 import torch
 import torch.nn as nn
-
+from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
 
 class NodeMemory:
     """NodeMemory to remember states for each node."""
 
-    def __init__(self, n_nodes, hidden_d):
+    def __init__(self, n_nodes:int, hidden_d:int,device:Union[str,torch.device], memory_on_cpu:bool=False):
         """Create a node memory based on the number of nodes and the state dimension.
 
         Args:
@@ -30,50 +32,75 @@ class NodeMemory:
         """
         self.n_nodes = n_nodes
         self.hidden_d = hidden_d
+        self.device = device 
+        if memory_on_cpu:
+            self.device = "cpu"
         self.reset_state()
-
     def reset_state(self):
         """Reset the memory to a random tensor."""
-        self.memory_h = torch.randn(self.n_nodes, 1, self.hidden_d)
-        self.memory_c = torch.randn(self.n_nodes, 1, self.hidden_d)
+        self.memory_h = torch.randn(self.n_nodes, 1, self.hidden_d).to(self.device)
+        self.memory_c = torch.randn(self.n_nodes, 1, self.hidden_d).to(self.device)
 
     def update_memory(self, new_memory_h, new_memory_c, inx):
         """Update memory."""
-        self.memory_h[inx] = new_memory_h[0].view(-1, 1, self.hidden_d)
-        self.memory_c[inx] = new_memory_c[0].view(-1, 1, self.hidden_d)
+        self.memory_h[inx] = new_memory_h[0].view(-1, 1, self.hidden_d).to(self.device)
+        self.memory_c[inx] = new_memory_c[0].view(-1, 1, self.hidden_d).to(self.device)
 
-    def get_memory(self, inx):
+    def get_memory(self, inx, device):
         """Retrieve node memory by index."""
-        return (self.memory_h[inx].view(1, -1, self.hidden_d), self.memory_c[inx].view(1, -1, self.hidden_d))
+        return (self.memory_h[inx].view(1, -1, self.hidden_d).to(device), self.memory_c[inx].view(1, -1,
+            self.hidden_d).to(device))
 
 
-class LSTM(nn.Module):
+class SequentialDecoder(nn.Module):
+    """Prototype of sequential decoders."""
+    
+    def __init__(self, hidden_d:int, n_nodes:int, simple_decoder:SimpleDecoder,device:Union[str,torch.device], memory_on_cpu:bool=False):
+        super().__init__()
+        self.n_nodes = n_nodes
+        self.hidden_d = hidden_d
+        self.memory = NodeMemory(n_nodes, hidden_d,device,memory_on_cpu)
+        self.simple_decoder = simple_decoder
+
+    @abstractmethod
+    def forward(self, in_sample: Tuple[torch.Tensor, List]) -> torch.Tensor:
+        """All SequentialDecoder subclass should have a forward function.
+
+        Args:
+            in_sample: tuple, first entry is a node-wise embedding from an encoder, second entry is the list[int] of targeted node ids.
+
+
+        Return:
+            tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
+        """
+        pass
+
+
+class LSTM(SequentialDecoder):
     """LSTM sequential decoder."""
 
-    def __init__(self, input_d, hidden_d, n_nodes, device):
+    def __init__(self, input_d:int, hidden_d:int, n_nodes:int, simple_decoder:SimpleDecoder,
+            device:Union[str,torch.device], memory_on_cpu:bool=False):
         """Create a LSTM sequential decoder.
 
         Args:
             input_d: int, input dimension.
             hidden_d: int, number of hidden cells.
             n_nodes: int, number of nodes.
+            simple_decoder: an instance of SimpleDecoder.
             device: str or torch.device, the device this model will run. Mainly for node memory.
         """
-        super().__init__()
+        super().__init__(hidden_d,n_nodes,simple_decoder,device,memory_on_cpu)
         self.input_d = input_d
         self.lstm = nn.LSTM(input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=1).float()
-        self.linear = nn.Linear(in_features=hidden_d, out_features=1).float()
-        self.n_nodes = n_nodes
-        self.hidden_d = hidden_d
         self.mini_batch = False
-        self.memory = NodeMemory(n_nodes, hidden_d)
         self.device = device
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""
         self.mini_batch = mini_batch
 
-    def forward(self, in_state):
+    def forward(self, in_state:Tuple[torch.Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -82,10 +109,8 @@ class LSTM(nn.Module):
         node_embs, ids = in_state
         if not self.mini_batch:
             node_embs = node_embs[ids]
-        h, c = self.memory.get_memory(ids)
-        h = h.to(self.device)
-        c = c.to(self.device)
+        h, c = self.memory.get_memory(ids, self.device)
         out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), (h, c))
-        out = self.linear(out_sequential)
-        self.memory.update_memory(h.detach().cpu(), c.detach().cpu(), ids)
+        out = self.simple_decoder((out_sequential.view(-1,self.hidden_d), ids))
+        self.memory.update_memory(h.detach().clone(), c.detach().clone(), ids)
         return out
