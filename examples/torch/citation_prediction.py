@@ -9,19 +9,19 @@ from nineturn.core.config import  set_backend
 set_backend(PYTORCH)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.torch.staticGraphEncoder import GCN, GAT, SGCN, GraphSage
-from nineturn.dtdg.models.decoder.torch.sequentialDecoder import LSTM
+from nineturn.dtdg.models.decoder.torch.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
+from nineturn.dtdg.models.decoder.torch.simpleDecoder import MLP
 
 
 def assembler(encoder, decoder):
     return nn.Sequential(encoder,decoder).to(device)
 
-loss_fn = torch.nn.MSELoss()
 """
 def loss_fn(predict, label):
     return torch.sqrt(torch.mean(torch.abs(torch.log1p(predict) - torch.log1p(label))))
 """
 if __name__ == '__main__':
-    device = 'cpu'
+    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #----------------------------------------------------------------
     #set up logger
     this_logger = logging.getLogger('citation_predictoin_pipeline')
@@ -45,30 +45,31 @@ if __name__ == '__main__':
     #gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True, dropout=0.2).to(device)
     #gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True).to(device)
     #gnn = GAT([1], in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True).to(device)
-    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=F.leaky_relu).to(device)
-    decoder = LSTM( hidden_dim, 10,n_nodes).to(device)
+    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=F.leaky_relu)
+    output_decoder = MLP(10, [10,20,10,5])
+    #decoder = LSTM( hidden_dim, 10,n_nodes,3,output_decoder, device)
+    #decoder = GRU( hidden_dim, 10,n_nodes,3,output_decoder, device)
+    decoder = RNN( hidden_dim, 10,n_nodes,3,output_decoder, device)
     #this_model = LSTM( in_dim, 10,n_nodes,device).to(device)
-    this_model = assembler(gnn, decoder)
-
-    
+    this_model = assembler(gnn, decoder).to(device)
+    loss_fn = torch.nn.MSELoss().to(device)
     optimizer = torch.optim.Adam(
         [{"params": this_model.parameters()}], lr=1e-3
     )
     loss_list=[]
     all_predictions=[]
-    for epoch in range(2):
-        this_model[1].memory.reset_state()
-        for t in range(5,7):
+    for epoch in range(20):
+        this_model[1].reset_memory_state()
+        for t in range(5,n_snapshot-2):
             this_model.train()
             optimizer.zero_grad()
             this_snapshot = this_graph.dispatcher(t)
             next_snapshot = this_graph.dispatcher(t+1)
             node_samples = torch.arange(this_snapshot.num_nodes())
-            predict = this_model.forward((this_snapshot, node_samples)).to(device)
-            #predict, (h,c) = this_model.forward((this_snapshot.node_feature()[node_samples].float(), this_state))
+            predict = this_model.forward((this_snapshot, node_samples))
             label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1].float()
-            all_predictions.append(predict.squeeze())
-            loss = loss_fn(predict.squeeze(), label).to(device)
+            all_predictions.append(predict.squeeze().clone())
+            loss = loss_fn(predict.squeeze(), label)
             loss.backward()
             optimizer.step()
             loss_list.append(loss.item())
