@@ -36,6 +36,7 @@ SOURCE = 1  # position of source in edges table
 DESTINATION = 2  # position of destination in edges_table
 FEAT = 'h'  # key for edge and node feature in DGLGraph.edata and ndata.
 ID_TYPE = 'int64'
+FEATURE_TYPE = "float32"
 logger = get_logger()
 
 
@@ -195,10 +196,10 @@ class VEInvariantDTDG(DiscreteGraph):
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
         observation = dgl.graph((src, dst), num_nodes=num_nodes)
         if this_edges.shape[1] > self.edge_dimension:
-            observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
+            observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :].astype(FEATURE_TYPE))
 
         if this_nodes.shape[1] > self.node_dimension:
-            observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :])
+            observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :].astype(FEATURE_TYPE))
 
         return Snapshot(observation, t)
 
@@ -253,7 +254,7 @@ class CitationGraph(VEInvariantDTDG):
             citation[: previous_citation.shape[0], 0] = previous_citation
 
         this_nodes = np.hstack((this_nodes, citation))
-        observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :])
+        observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :].astype(FEATURE_TYPE))
         if add_self_loop:
             observation = observation.add_self_loop()
         return Snapshot(observation, t)
