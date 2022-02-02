@@ -9,7 +9,7 @@ set_backend(TENSORFLOW)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
 from nineturn.dtdg.models.decoder.tf.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
-from nineturn.dtdg.models.decoder.tf.simpleDecoder import MLP
+from nineturn.dtdg.models.decoder.simpleDecoders import MLP
 from nineturn.core.commonF import to_tensor
 from nineturn.automl.model_assembler import assembler
 

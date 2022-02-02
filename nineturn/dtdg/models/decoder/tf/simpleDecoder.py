@@ -18,16 +18,18 @@ from abc import abstractmethod
 from typing import List, Tuple
 
 import tensorflow as tf
-from tensorflow import Tensor
-from tensorflow.keras import Model, layers
+from tensorflow.keras import layers
 
-class SimpleDecoder(layers.Layer):
+from nineturn.core.types import MLBaseModel, Tensor, nt_layers_list
+
+
+class SimpleDecoder(MLBaseModel):
     """Prototype of simple decoder."""
 
     def __init__(self):
         """Init function."""
         super().__init__()
-        self.nn_layers = []
+        self.nn_layers = nt_layers_list()
 
     @abstractmethod
     def call(self, in_sample: Tuple[Tensor, List]) -> Tensor:

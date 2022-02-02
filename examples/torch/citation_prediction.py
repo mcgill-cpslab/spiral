@@ -11,7 +11,7 @@ set_backend(PYTORCH)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, GAT, SGCN, GraphSage
 from nineturn.dtdg.models.decoder.torch.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
-from nineturn.dtdg.models.decoder.torch.simpleDecoder import MLP
+from nineturn.dtdg.models.decoder.simpleDecoders import MLP
 
 
 def assembler(encoder, decoder):
