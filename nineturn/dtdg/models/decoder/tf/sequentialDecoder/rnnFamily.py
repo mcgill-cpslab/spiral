@@ -45,19 +45,17 @@ class NodeMemory:
 
     def reset_state(self):
         """Reset the memory to a random tensor."""
-        #self.memory =tf.Variable(np.random.rand( self.n_nodes, self.n_layers, self.hidden_d),dtype= tf.float32)
         self.memory = np.random.rand( self.n_nodes, self.n_layers, self.hidden_d)
 
     def update_memory(self, new_memory, inx):
-        """Update memory."""
-        #for i in range(len(inx)):
-        #    self.memory[inx[i]].assign(new_memory[i])
-        self.memory[inx.numpy()] = new_memory.numpy()
+        """Update memory [N,L,D]."""
+        self.memory[inx] = new_memory.numpy()
 
     def get_memory(self, inx):
-        """Retrieve node memory by index."""
-        #return tf.gather(self.memory, inx)
-        return to_tensor(self.memory[inx.numpy()])
+        """Retrieve node memory by index.Return shape [L,N,D]."""
+        selected = self.memory[inx]
+        result = np.einsum('lij->ilj', selected)
+        return result
 
 
 class SequentialDecoder(layers.Layer):
@@ -80,6 +78,13 @@ class SequentialDecoder(layers.Layer):
         self.base_model = None
         self.simple_decoder = simple_decoder
         self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers)
+        self.training_mode = True
+
+    def training(self):
+        self.training_mode = True
+
+    def eval_mode(self):
+        self.training_mode = False
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""
@@ -97,19 +102,17 @@ class SequentialDecoder(layers.Layer):
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
         node_embs, ids = in_state
+        ids = ids.numpy()
         if not self.mini_batch:
             node_embs = tf.gather(node_embs,ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
-        h = tf.transpose(self.memory_h.get_memory(ids), [1,0,2])
-        t1 = datetime.now()
-        out_result= self.base_model(out_sequential)
-        t2 = datetime.now()
+        h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
+        out_result= self.base_model(out_sequential, initial_state=h)
         out_sequential = out_result[0]
-        new_h = out_result[1:]
-        self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)),[1,0,2]), ids)
-        t3 = datetime.now()
+        if self.training_mode:
+            new_h = out_result[1:]
+            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)),[1,0,2]), ids)
         out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
-        t4 = datetime.now()
         return out
 
 
@@ -123,7 +126,6 @@ class LSTM(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        memory_on_cpu:bool=False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -138,7 +140,11 @@ class LSTM(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = self.base_model = [layers.LSTM(hidden_d, return_state=True, **kwargs) for i in range(n_layers)]
+        self.base_model = layers.RNN(
+                [layers.LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
+                return_state=True,return_sequences=True,
+                **kwargs
+                )
         self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
 
     def reset_memory_state(self):
@@ -154,20 +160,22 @@ class LSTM(SequentialDecoder):
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
         node_embs, ids = in_state
+        ids = ids.numpy()
         if not self.mini_batch:
-            node_embs = node_embs[ids]
-        out_sequential = node_embs.reshape(-1, 1, self.input_d)
-        h = self.memory_h.get_memory(ids)
-        c = self.memory_c.get_memory(ids)
-        new_h = []
-        new_c = []
-        for i in range(self.n_layers):
-            out_sequential, h_temp,c_temp = self.base_model[i](out_sequential, h[i])
-            new_h.append(h_temp)
-            new_c.append(c_temp)
-        self.memory_h.update_memory(tf.Tensor(new_h), ids)
-        self.memory_c.update_memory(tf.Tensor(new_c), ids)
-        out = self.simple_decoder((out_sequential.reshape(-1, self.hidden_d), ids))
+            node_embs = tf.gather(node_embs,ids)
+        out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
+        h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
+        c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
+        hc = [(h[i],c[i]) for i in range(self.n_layers)]
+        out_result= self.base_model(out_sequential,initial_state=hc)
+        out_sequential = out_result[0]
+        if self.training_mode:
+            new_hc = out_result[1:]
+            new_h = [i[0] for i in new_hc]
+            new_c = [i[1] for i in new_hc]
+            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)),[1,0,2]), ids)
+            self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)),[1,0,2]), ids)
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
         return out
 
 

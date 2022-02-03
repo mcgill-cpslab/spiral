@@ -1,6 +1,5 @@
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import logging
 import datetime
@@ -10,12 +9,10 @@ from nineturn.core.config import  set_backend
 set_backend(PYTORCH)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, GAT, SGCN, GraphSage
-from nineturn.dtdg.models.decoder.torch.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
+from nineturn.dtdg.models.decoder.sequentialDecoders import LSTM, GRU,RNN
 from nineturn.dtdg.models.decoder.simpleDecoders import MLP
+from nineturn.automl.model_assembler import assembler
 
-
-def assembler(encoder, decoder):
-    return nn.Sequential(encoder,decoder).to(device)
 
 """
 def loss_fn(predict, label):
@@ -61,9 +58,8 @@ if __name__ == '__main__':
     loss_list=[]
     all_predictions=[]
     for epoch in range(20):
-        this_model[1].reset_memory_state()
+        this_model.decoder.reset_memory_state()
         for t in range(5,n_snapshot-2):
-            t1 = datetime.datetime.now()
             this_model.train()
             optimizer.zero_grad()
             this_snapshot = this_graph.dispatcher(t)
@@ -76,7 +72,6 @@ if __name__ == '__main__':
             loss.backward()
             optimizer.step()
             loss_list.append(loss.item())
-            print(f"{t}:{(datetime.datetime.now() -t1).total_seconds()}")
         print(loss_list[-1])
         print(all_predictions[-1][:20])
         print(label[:20])

@@ -10,9 +10,3 @@ class Assembler(keras.Model):
         h = self.encoder(input_state)
         h = self.decoder(h)
         return h
-
-
-
-
-def assembler(encoder, decoder):
-    return Assembler(encoder,decoder)

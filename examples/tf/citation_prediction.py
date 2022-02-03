@@ -8,7 +8,7 @@ from nineturn.core.config import  set_backend
 set_backend(TENSORFLOW)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
+from nineturn.dtdg.models.decoder.sequentialDecoders import LSTM, GRU,RNN
 from nineturn.dtdg.models.decoder.simpleDecoders import MLP
 from nineturn.core.commonF import to_tensor
 from nineturn.automl.model_assembler import assembler
@@ -49,17 +49,22 @@ if __name__ == '__main__':
     #gnn = GAT([1], in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True)
     gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f)
     output_decoder = MLP(output_dim, [10,20,10,5])
-    #decoder = LSTM( hidden_dim, 10,n_nodes,3,output_decoder, device)
+    decoder = LSTM( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
     #decoder = GRU( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
-    decoder = RNN( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
+    #decoder = RNN( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
     this_model = assembler(gnn, decoder)
-    loss_fn = tf.keras.losses.MeanSquaredError()
-    optimizer = tf.keras.optimizers.Adam(learning_rate=1e-3, epsilon=1e-8)
+    loss_fn = keras.losses.MeanSquaredError()
+    optimizer = keras.optimizers.Adam(learning_rate=1e-3, epsilon=1e-8)
     loss_list=[]
     all_predictions=[]
+    eval_loss = []
+    eval_predictions = []
+    eval_loss2 = []
+    eval_predictions2= []
     for epoch in range(20):
-        #this_model[1].reset_memory_state()
-        for t in range(5,n_snapshot-2):
+        #this_model.decoder.reset_memory_state()
+        this_model.decoder.training()
+        for t in range(1,n_snapshot-2):
             with tf.GradientTape() as tape:
                 this_snapshot = this_graph.dispatcher(t)
                 next_snapshot = this_graph.dispatcher(t+1)
@@ -75,4 +80,15 @@ if __name__ == '__main__':
         print(all_predictions[-1][:20])
         print(label[:20])
 
-
+        this_model.decoder.eval_mode()
+        this_snapshot = this_graph.dispatcher(n_snapshot-2)
+        next_snapshot = this_graph.dispatcher(n_snapshot-1)
+        node_samples = np.arange(this_snapshot.num_nodes())
+        predict = this_model((this_snapshot,node_samples))
+        label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
+        eval_predictions.append(tf.squeeze(predict).numpy())
+        loss = loss_fn(tf.squeeze(predict), label)
+        eval_loss.append(loss.numpy())
+        print(eval_loss[-1])
+        print(eval_predictions[-1][:20])
+        print(label[:20])

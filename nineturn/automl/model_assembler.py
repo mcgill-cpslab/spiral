@@ -22,8 +22,13 @@ from nineturn.core.utils import _get_backend
 this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:
-    from nineturn.automl.tf.model_assembler import assembler as assembler
+    from nineturn.automl.tf.model_assembler import Assembler as Assembler
 elif this_backend == PYTORCH:
-    from nineturn.automl.torch.model_assembler import assembler as assembler
+    from nineturn.automl.torch.model_assembler import Assembler as Assembler
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))
+
+
+def assembler(encoder, decoder):
+    """Combine the input encoder and decoder to a single model."""
+    return Assembler(encoder,decoder)

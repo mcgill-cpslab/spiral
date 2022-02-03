@@ -80,7 +80,7 @@ class NodeMemory:
 class SequentialDecoder(nn.Module):
     """Prototype of sequential decoders."""
 
-    def __init__(self, hidden_d: int, n_nodes: int,n_layers:int, simple_decoder: SimpleDecoder, memory_on_cpu:bool):
+    def __init__(self, hidden_d: int, n_nodes: int,n_layers:int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
 
         Args:
@@ -95,8 +95,8 @@ class SequentialDecoder(nn.Module):
         self.mini_batch = False
         self.base_model = None
         self.simple_decoder = simple_decoder
-        self.memory_on_cpu = memory_on_cpu
         self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers)
+        self.training_mode = True
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""
@@ -125,10 +125,14 @@ class SequentialDecoder(nn.Module):
         ret = copy.copy(self)
         ret.base_model = self.base_model.to(device, **kwargs)
         ret.simple_decoder = self.simple_decoder.to(device, **kwargs)
-        if not self.memory_on_cpu:
-            ret.memory_h = self.memory_h.to(device, **kwargs)
+        ret.memory_h = self.memory_h.to(device, **kwargs)
         return ret
 
+    def training(self):
+        self.training_mode = True
+
+    def eval_mode(self):
+        self.training_mode = False
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
@@ -143,10 +147,9 @@ class SequentialDecoder(nn.Module):
         if not self.mini_batch:
             node_embs = node_embs[ids]
         h = self.memory_h.get_memory(ids)
-        if self.memory_h.device != self.device:
-            h.to(self.device)
         out_sequential, h = self.base_model(node_embs.view(-1, 1, self.input_d), h)
-        self.memory_h.update_memory(h.detach().clone(), ids)
+        if self.training_mode:
+            self.memory_h.update_memory(h.detach().clone(), ids)
         out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
         return out
 
@@ -161,7 +164,6 @@ class LSTM(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        memory_on_cpu:bool=False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -174,14 +176,12 @@ class LSTM(SequentialDecoder):
             simple_decoder: an instance of SimpleDecoder.
             memory_on_cpu: bool, always put node memory to cpu.
         """
-        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder,memory_on_cpu)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
         self.base_model = nn.LSTM(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
         ).float()
         self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
-        if self.memory_on_cpu:
-            self.memory_c = self.memory_c.to("cpu")
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
@@ -205,8 +205,7 @@ class LSTM(SequentialDecoder):
             return self
 
         ret = super(self).to(device)
-        if not self.memory_on_cpu:
-            ret.memory_c = self.memory_c.to(device, **kwargs)
+        ret.memory_c = self.memory_c.to(device, **kwargs)
         return ret
 
     def forward(self, in_state: Tuple[torch.Tensor, List[int]]):
@@ -220,13 +219,10 @@ class LSTM(SequentialDecoder):
             node_embs = node_embs[ids]
         h = self.memory_h.get_memory(ids)
         c = self.memory_c.get_memory(ids)
-        if self.memory_h.device != self.device:
-            h.to(self.device)
-            c.to(self.device)
-
         out_sequential, (h, c) = self.base_model(node_embs.view(-1, 1, self.input_d), (h, c))
-        self.memory_h.update_memory(h.detach().clone(), ids)
-        self.memory_c.update_memory(c.detach().clone(), ids)
+        if self.training_mode:
+            self.memory_h.update_memory(h.detach().clone(), ids)
+            self.memory_c.update_memory(c.detach().clone(), ids)
         out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
         return out
 
@@ -241,7 +237,6 @@ class GRU(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        memory_on_cpu: bool = False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -258,9 +253,7 @@ class GRU(SequentialDecoder):
         self.input_d = input_d
         self.base_model = nn.GRU(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
-        ).float()
-        if self.memory_on_cpu:
-            self.memory_h = self.memory_h.to("cpu")
+        )
 
 
 
@@ -291,4 +284,4 @@ class RNN(SequentialDecoder):
         self.input_d = input_d
         self.base_model = nn.RNN(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
-        ).float()
+        )

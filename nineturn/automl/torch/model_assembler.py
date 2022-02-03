@@ -13,9 +13,15 @@
 # limitations under the License.
 # ==============================================================================
 """Model assembler for pytorch."""
-import torch.nn as nn
+from torch.nn import Module
 
 
-def assembler(encoder, decoder):
-    """Combine the input encoder and decoder to a single model."""
-    return nn.Sequential(encoder, decoder)
+class Assembler(Module):
+    def __init__(self, encoder, decoder):
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
+    def forward(self,input_state):
+        h = self.encoder(input_state)
+        h = self.decoder(h)
+        return h
