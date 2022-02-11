@@ -13,24 +13,24 @@
 # limitations under the License.
 # ==============================================================================
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
-from datetime import datetime
 import copy
 from abc import abstractmethod
+from datetime import datetime
 from typing import List, Tuple, Union
+
 import numpy as np
 import tensorflow as tf
-from tensorflow import keras, Tensor
+from tensorflow import Tensor, keras
 from tensorflow.keras import layers
 
-from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
 from nineturn.core.commonF import to_tensor
+from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
 
 
 class NodeMemory:
     """NodeMemory to remember states for each node."""
 
-    def __init__(
-        self, n_nodes: int, hidden_d: int, n_layers: int):
+    def __init__(self, n_nodes: int, hidden_d: int, n_layers: int):
         """Create a node memory based on the number of nodes and the state dimension.
 
         Args:
@@ -45,7 +45,7 @@ class NodeMemory:
 
     def reset_state(self):
         """Reset the memory to a random tensor."""
-        self.memory = np.random.rand( self.n_nodes, self.n_layers, self.hidden_d)
+        self.memory = np.random.rand(self.n_nodes, self.n_layers, self.hidden_d)
 
     def update_memory(self, new_memory, inx):
         """Update memory [N,L,D]."""
@@ -61,7 +61,7 @@ class NodeMemory:
 class SequentialDecoder(layers.Layer):
     """Prototype of sequential decoders."""
 
-    def __init__(self, hidden_d: int, n_nodes: int,n_layers:int, simple_decoder: SimpleDecoder):
+    def __init__(self, hidden_d: int, n_nodes: int, n_layers: int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
 
         Args:
@@ -90,7 +90,6 @@ class SequentialDecoder(layers.Layer):
         """Set to batch training mode."""
         self.mini_batch = mini_batch
 
-
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
@@ -104,14 +103,14 @@ class SequentialDecoder(layers.Layer):
         node_embs, ids = in_state
         ids = ids.numpy()
         if not self.mini_batch:
-            node_embs = tf.gather(node_embs,ids)
+            node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
-        out_result= self.base_model(out_sequential, initial_state=h)
+        out_result = self.base_model(out_sequential, initial_state=h)
         out_sequential = out_result[0]
         if self.training_mode:
             new_h = out_result[1:]
-            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)),[1,0,2]), ids)
+            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
         out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
         return out
 
@@ -141,17 +140,17 @@ class LSTM(SequentialDecoder):
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
         self.base_model = layers.RNN(
-                [layers.LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
-                return_state=True,return_sequences=True,
-                **kwargs
-                )
+            [layers.LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
+            return_state=True,
+            return_sequences=True,
+            **kwargs,
+        )
         self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
         self.memory_c.reset_state()
-
 
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
@@ -162,19 +161,19 @@ class LSTM(SequentialDecoder):
         node_embs, ids = in_state
         ids = ids.numpy()
         if not self.mini_batch:
-            node_embs = tf.gather(node_embs,ids)
+            node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
-        hc = [(h[i],c[i]) for i in range(self.n_layers)]
-        out_result= self.base_model(out_sequential,initial_state=hc)
+        hc = [(h[i], c[i]) for i in range(self.n_layers)]
+        out_result = self.base_model(out_sequential, initial_state=hc)
         out_sequential = out_result[0]
         if self.training_mode:
             new_hc = out_result[1:]
             new_h = [i[0] for i in new_hc]
             new_c = [i[1] for i in new_hc]
-            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)),[1,0,2]), ids)
-            self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)),[1,0,2]), ids)
+            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
+            self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)), [1, 0, 2]), ids)
         out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
         return out
 
@@ -204,9 +203,7 @@ class GRU(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = layers.RNN([layers.GRUCell(ahidden_d) for i in range(n_layers)], return_state = True,
-                **kwargs)
-
+        self.base_model = layers.RNN([layers.GRUCell(ahidden_d) for i in range(n_layers)], return_state=True, **kwargs)
 
 
 class RNN(SequentialDecoder):
@@ -233,7 +230,8 @@ class RNN(SequentialDecoder):
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
         self.base_model = layers.RNN(
-                [layers.SimpleRNNCell(hidden_d, **kwargs) for i in range(n_layers)],
-                return_state=True,return_sequences=True,
-                **kwargs
-                )
+            [layers.SimpleRNNCell(hidden_d, **kwargs) for i in range(n_layers)],
+            return_state=True,
+            return_sequences=True,
+            **kwargs,
+        )

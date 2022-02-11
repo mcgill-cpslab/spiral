@@ -19,7 +19,6 @@ from nineturn.core.backends import PYTORCH, TENSORFLOW
 from nineturn.core.errors import BackendNotSupportedError
 from nineturn.core.utils import _get_backend
 
-
 this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:

@@ -1,7 +1,9 @@
 """Tensorflow specific common functions."""
+from typing import List
+
 import tensorflow as tf
 from numpy import ndarray
-from typing import List
+
 
 def _to_tensor(arr: ndarray) -> tf.Tensor:
     """Convert a numpy array to tensorflow tensor."""

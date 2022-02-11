@@ -16,12 +16,13 @@
 
 from abc import abstractmethod
 from typing import List, Tuple, Union
+
 from dgl import add_self_loop
+
 from nineturn.core.errors import DimensionError
 from nineturn.core.logger import get_logger
+from nineturn.core.types import Dropout, GATConv, GraphConv, MLBaseModel, SAGEConv, SGConv, Tensor, nt_layers_list
 from nineturn.dtdg.types import BatchedSnapshot, Snapshot
-from nineturn.core.types import Tensor, MLBaseModel, Dropout, GATConv, GraphConv, SGConv, SAGEConv, nt_layers_list
-
 
 logger = get_logger()
 
@@ -70,7 +71,6 @@ class StaticGraphEncoder(MLBaseModel):
         """
         pass
 
-
     def call(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
         """All StaticGraphEncoder subclass should have a forward function.
 
@@ -82,7 +82,6 @@ class StaticGraphEncoder(MLBaseModel):
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         return self.forward(in_sample)
-
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Turn on batch training mode.

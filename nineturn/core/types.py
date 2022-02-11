@@ -21,26 +21,31 @@ from nineturn.core.utils import _get_backend
 
 this_backend = _get_backend()
 
+
 def nt_layers_list():
     if this_backend == TENSORFLOW:
         return []
     else:
-        return 
-
+        return
 
 
 if this_backend == TENSORFLOW:
-    from tensorflow import Tensor
-    from tensorflow.keras.layers import Layer as MLBaseModel, Dropout as Dropout
-    from tensorflow.keras import Sequential
-    from nineturn.core.tf_functions import nt_layers_list
     from dgl.nn.tensorflow.conv import GATConv, GraphConv, SAGEConv, SGConv
+    from tensorflow import Tensor
+    from tensorflow.keras import Sequential
+    from tensorflow.keras.layers import Dropout as Dropout
+    from tensorflow.keras.layers import Layer as MLBaseModel
+
+    from nineturn.core.tf_functions import nt_layers_list
 
 elif this_backend == PYTORCH:
-    from torch.nn import Module as MLBaseModel, Sequential as Sequential, Dropout as Dropout
-    from torch import Tensor as Tensor
-    from nineturn.core.torch_functions import nt_layers_list
     from dgl.nn.pytorch.conv import GATConv, GraphConv, SAGEConv, SGConv
+    from torch import Tensor as Tensor
+    from torch.nn import Dropout as Dropout
+    from torch.nn import Module as MLBaseModel
+    from torch.nn import Sequential as Sequential
+
+    from nineturn.core.torch_functions import nt_layers_list
 
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

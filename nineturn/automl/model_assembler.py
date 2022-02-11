@@ -31,4 +31,4 @@ else:
 
 def assembler(encoder, decoder):
     """Combine the input encoder and decoder to a single model."""
-    return Assembler(encoder,decoder)
+    return Assembler(encoder, decoder)

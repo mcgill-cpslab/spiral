@@ -27,8 +27,7 @@ from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
 class NodeMemory:
     """NodeMemory to remember states for each node."""
 
-    def __init__(
-        self, n_nodes: int, hidden_d: int, n_layers: int):
+    def __init__(self, n_nodes: int, hidden_d: int, n_layers: int):
         """Create a node memory based on the number of nodes and the state dimension.
 
         Args:
@@ -77,10 +76,11 @@ class NodeMemory:
         ret.memory = self.memory.to(device, **kwargs)
         return ret
 
+
 class SequentialDecoder(nn.Module):
     """Prototype of sequential decoders."""
 
-    def __init__(self, hidden_d: int, n_nodes: int,n_layers:int, simple_decoder: SimpleDecoder):
+    def __init__(self, hidden_d: int, n_nodes: int, n_layers: int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
 
         Args:
@@ -133,6 +133,7 @@ class SequentialDecoder(nn.Module):
 
     def eval_mode(self):
         self.training_mode = False
+
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
@@ -187,7 +188,6 @@ class LSTM(SequentialDecoder):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
         self.memory_c.reset_state()
-
 
     def to(self, device, **kwargs):  # pylint: disable_invalide_name
         """Move the snapshot to the targeted device (cpu/gpu).
@@ -254,7 +254,6 @@ class GRU(SequentialDecoder):
         self.base_model = nn.GRU(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
         )
-
 
 
 class RNN(SequentialDecoder):
