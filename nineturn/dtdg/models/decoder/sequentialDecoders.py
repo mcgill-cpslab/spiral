@@ -23,11 +23,7 @@ this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:
     from nineturn.dtdg.models.decoder.tf.sequentialDecoder.rnnFamily import GRU, LSTM, RNN
-
-
 elif this_backend == PYTORCH:
     from nineturn.dtdg.models.decoder.torch.sequentialDecoder.rnnFamily import GRU, LSTM, RNN
-
-
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

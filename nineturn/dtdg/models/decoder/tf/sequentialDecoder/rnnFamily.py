@@ -24,7 +24,7 @@ from tensorflow import Tensor, keras
 from tensorflow.keras import layers
 
 from nineturn.core.commonF import to_tensor
-from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
+from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
 
 
 class NodeMemory:
