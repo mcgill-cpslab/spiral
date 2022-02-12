@@ -19,9 +19,6 @@ def loss_fn(predict, label):
     return torch.sqrt(torch.mean(torch.abs(torch.log1p(predict) - torch.log1p(label))))
 """
 if __name__ == '__main__':
-    #gpus = tf.config.list_physical_devices('GPU')
-
-    #device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
     #----------------------------------------------------------------
     data_to_test = supported_ogb_datasets()[1]
     this_graph = ogb_dataset(data_to_test)
@@ -35,17 +32,8 @@ if __name__ == '__main__':
     output_dim = 10
     activation_f = tf.nn.relu
     encoders = ['gcn', 'sgcn', 'gat', 'sage']
-    gnns = []
-    gnns.append(GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2))
-    gnns.append(SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True))
-    gnns.append(GAT([1], in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True))
-    gnns.append(GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f))
-    output_decoder = MLP(output_dim, [10,20,10,5])
     decoders = ['lstm', 'gru', 'rnn']
-    rnns = []
-    rnns.append(LSTM( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder))
-    rnns.append(GRU( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder))
-    rnns.append(RNN( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder))
+    epochs = 2000
     for g in range(4):
         for r in range(3):
             #set up logger
@@ -56,10 +44,31 @@ if __name__ == '__main__':
             fh = logging.FileHandler(log_path)
             fh.setLevel(logging.DEBUG)
             this_logger.addHandler(fh)
-            #--------------------------------------------------------
+            this_logger.info("--------------------------------------------------------")
             for trial in range(5):
-                this_model = assembler(gnns[g], rnns[r])
-                save_path = f"model_{g}_{r}_{trial}"
+                this_logger.info("--------------------------------------------------------")
+                this_logger.info(f"start trial {trial}")
+                if g == 0:
+                    gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
+                elif g == 1:
+                    gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True)
+                elif g == 2:
+                    gnn = GAT([1], in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True)
+                else:
+                    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f)
+
+                output_decoder = MLP(output_dim, [10,20,10,5])
+                
+                if r == 0:
+                    rnn = LSTM( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
+                elif r == 1:
+                    rnn = GRU( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
+                else:
+                    rnn = RNN( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
+
+
+                this_model = assembler(gnn, rnn)
+                save_path = f"model_{encoders[g]}_{decoders[r]}_{trial}"
                 loss_fn = keras.losses.MeanSquaredError()
                 loss_list=[]
                 all_predictions=[]
@@ -69,7 +78,7 @@ if __name__ == '__main__':
                 eval_predictions2= []
                 lr = 1e-3
                 optimizer = keras.optimizers.Adam(learning_rate=lr, epsilon=1e-8)
-                for epoch in range(200):
+                for epoch in range(epochs):
                     this_model.decoder.reset_memory_state()
                     this_model.decoder.training()
                     for t in range(1,n_snapshot-2):
@@ -110,6 +119,8 @@ if __name__ == '__main__':
 
                 this_logger.info(loss_list)
                 this_logger.info(eval_loss)
+                this_logger.info(f"best loss {mini}")
+
 
     """
     gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
