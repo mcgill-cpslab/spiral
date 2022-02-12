@@ -1,6 +1,6 @@
 from tensorflow import keras
 import numpy
-
+import os
 
 class Assembler(keras.Model):
     def __init__(self, encoder, decoder):
@@ -14,6 +14,8 @@ class Assembler(keras.Model):
         return h
 
     def save_model(self, path):
+        if not os.path.exists(path):
+            os.mkdir(path)
         encoder_weights = self.encoder.get_weights()
         decoder_weights = self.decoder.get_weights()
         numpy.save(f"{path}/encoder",encoder_weights)
