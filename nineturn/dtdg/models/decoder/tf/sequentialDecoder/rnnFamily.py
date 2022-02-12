@@ -221,7 +221,7 @@ class GRU(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = layers.RNN([layers.GRUCell(ahidden_d) for i in range(n_layers)], return_state=True, **kwargs)
+        self.base_model = layers.RNN([layers.GRUCell(hidden_d) for i in range(n_layers)], return_state=True, **kwargs)
 
 
 class RNN(SequentialDecoder):
