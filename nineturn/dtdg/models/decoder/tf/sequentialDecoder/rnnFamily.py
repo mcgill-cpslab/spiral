@@ -58,6 +58,7 @@ class NodeMemory:
         return result
 
 
+
 class SequentialDecoder(layers.Layer):
     """Prototype of sequential decoders."""
 
@@ -94,6 +95,14 @@ class SequentialDecoder(layers.Layer):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
 
+    def get_weights(self):
+        return [self.base_model.get_weights(), self.simple_decoder.get_weights(), self.memory_h.memory]
+
+    def set_weights(self, weights):
+        self.base_model.set_weights(weights[0])
+        self.simple_decoder.set_weights(weights[1])
+        self.memory_h.memory = weights[2]
+    
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -146,6 +155,15 @@ class LSTM(SequentialDecoder):
             **kwargs,
         )
         self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
+
+    def get_weights(self):
+        weights = super().get_weights()
+        weights.append(self.memory_c.memory)
+        return weights
+
+    def set_weights(self, weights):
+        super().set_weights(weights)
+        self.memory_c.memory = weights[3]
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""

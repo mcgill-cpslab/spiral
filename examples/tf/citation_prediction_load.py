@@ -44,64 +44,23 @@ if __name__ == '__main__':
     num_RNN_layers = 2
     output_dim = 10
     activation_f = tf.nn.relu
-    gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
+    #gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
     #gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True)
     #gnn = GAT([1], in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True)
-    #gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f)
+    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f)
     output_decoder = MLP(output_dim, [10,20,10,5])
     decoder = LSTM( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
     #decoder = GRU( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
     #decoder = RNN( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
-    this_model = assembler(gnn, decoder)
-    loss_fn = keras.losses.MeanSquaredError()
-    optimizer = keras.optimizers.Adam(learning_rate=1e-3, epsilon=1e-8)
-    loss_list=[]
-    all_predictions=[]
-    eval_loss = []
-    eval_predictions = []
-    eval_loss2 = []
-    eval_predictions2= []
-    for epoch in range(2):
-        #this_model.decoder.reset_memory_state()
-        this_model.decoder.training()
-        for t in range(1,n_snapshot-2):
-            with tf.GradientTape() as tape:
-                this_snapshot = this_graph.dispatcher(t)
-                next_snapshot = this_graph.dispatcher(t+1)
-                node_samples = np.arange(this_snapshot.num_nodes())
-                predict = this_model((this_snapshot,node_samples))
-                label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
-                all_predictions.append(tf.squeeze(predict).numpy())
-                loss = loss_fn(tf.squeeze(predict), label)
-                grads = tape.gradient(loss, this_model.trainable_weights)
-                optimizer.apply_gradients(zip(grads, this_model.trainable_weights))
-                loss_list.append(loss.numpy())
-        this_logger.info(loss_list[-1])
-
-        this_model.decoder.eval_mode()
-        this_snapshot = this_graph.dispatcher(n_snapshot-2)
-        next_snapshot = this_graph.dispatcher(n_snapshot-1)
-        node_samples = np.arange(this_snapshot.num_nodes())
-        predict = this_model((this_snapshot,node_samples))
-        label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
-        eval_predictions.append(tf.squeeze(predict).numpy())
-        loss = loss_fn(tf.squeeze(predict), label)
-        eval_loss.append(loss.numpy())
-        this_logger.info(eval_loss[-1])
-
 
     save_path = "save_model_test"
-    this_model.save_model(save_path)
-    gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
-    output_decoder = MLP(output_dim, [10,20,10,5])
-    decoder = LSTM( hidden_dim, output_dim,n_nodes,num_RNN_layers,output_decoder)
     new_model = assembler(gnn, decoder)
+    new_model.load_model(save_path)
+    new_model.decoder.eval_mode()
     new_snapshot = this_graph.dispatcher(n_snapshot-2)
     next_snapshot = this_graph.dispatcher(n_snapshot-1)
     node_samples = np.arange(this_snapshot.num_nodes())
-    new_predict = new_model((this_snapshot, node_samples))
-    new_model.load_model(save_path)
-    new_predict = new_model((this_snapshot, node_samples))
+    new_predict = this_model((this_snapshot,node_samples))
     label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
     loss = loss_fn(tf.squeeze(new_predict), label)
     this_logger.info(loss.numpy())
