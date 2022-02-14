@@ -20,12 +20,12 @@ from typing import List, Tuple, Union
 
 import numpy as np
 import tensorflow as tf
-from tensorflow import Tensor, keras
-from tensorflow.keras import layers
+from tensorflow import Tensor
+from tensorflow.keras.layers import MultiHeadAttention, RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNCell
 
 from nineturn.core.commonF import to_tensor
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-
+from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel
 
 class NodeMemory:
     """NodeMemory to remember states for each node."""
@@ -59,8 +59,8 @@ class NodeMemory:
 
 
 
-class SequentialDecoder(layers.Layer):
-    """Prototype of sequential decoders."""
+class RnnFamily(BaseModel):
+    """Prototype of RNN family sequential decoders."""
 
     def __init__(self, hidden_d: int, n_nodes: int, n_layers: int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
@@ -71,25 +71,10 @@ class SequentialDecoder(layers.Layer):
             simple_decoder: SimpleDecoder, the outputing simple decoder.
             device: str or torch.device, the device this model will run. mainly for node memory.
         """
-        super().__init__()
+        super().__init__(hidden_d, simple_decoder)
         self.n_nodes = n_nodes
-        self.hidden_d = hidden_d
         self.n_layers = n_layers
-        self.mini_batch = False
-        self.base_model = None
-        self.simple_decoder = simple_decoder
         self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers)
-        self.training_mode = True
-
-    def training(self):
-        self.training_mode = True
-
-    def eval_mode(self):
-        self.training_mode = False
-
-    def set_mini_batch(self, mini_batch: bool = True):
-        """Set to batch training mode."""
-        self.mini_batch = mini_batch
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
@@ -99,8 +84,7 @@ class SequentialDecoder(layers.Layer):
         return [self.base_model.get_weights(), self.simple_decoder.get_weights(), self.memory_h.memory]
 
     def set_weights(self, weights):
-        self.base_model.set_weights(weights[0])
-        self.simple_decoder.set_weights(weights[1])
+        super().set_weights(weights)
         self.memory_h.memory = weights[2]
     
     def call(self, in_state: Tuple[Tensor, List[int]]):
@@ -111,8 +95,7 @@ class SequentialDecoder(layers.Layer):
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
         node_embs, ids = in_state
         ids = ids.numpy()
-        if not self.mini_batch:
-            node_embs = tf.gather(node_embs, ids)
+        node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         out_result = self.base_model(out_sequential, initial_state=h)
@@ -124,7 +107,7 @@ class SequentialDecoder(layers.Layer):
         return out
 
 
-class LSTM(SequentialDecoder):
+class LSTM(RnnFamily):
     """LSTM sequential decoder."""
 
     def __init__(
@@ -148,8 +131,8 @@ class LSTM(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = layers.RNN(
-            [layers.LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
+        self.base_model = TfRnn(
+            [LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
             return_state=True,
             return_sequences=True,
             **kwargs,
@@ -178,8 +161,7 @@ class LSTM(SequentialDecoder):
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
         node_embs, ids = in_state
         ids = ids.numpy()
-        if not self.mini_batch:
-            node_embs = tf.gather(node_embs, ids)
+        node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
@@ -196,7 +178,7 @@ class LSTM(SequentialDecoder):
         return out
 
 
-class GRU(SequentialDecoder):
+class GRU(RnnFamily):
     """GRU sequential decoder."""
 
     def __init__(
@@ -221,10 +203,10 @@ class GRU(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = layers.RNN([layers.GRUCell(hidden_d) for i in range(n_layers)], return_state=True, **kwargs)
+        self.base_model = TfRnn([GRUCell(hidden_d) for i in range(n_layers)], return_state=True, **kwargs)
 
 
-class RNN(SequentialDecoder):
+class RNN(RnnFamily):
     """RNN sequential decoder."""
 
     def __init__(
@@ -247,9 +229,96 @@ class RNN(SequentialDecoder):
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.base_model = layers.RNN(
-            [layers.SimpleRNNCell(hidden_d, **kwargs) for i in range(n_layers)],
+        self.base_model = TfRnn(
+            [SimpleRNNCell(hidden_d, **kwargs) for i in range(n_layers)],
             return_state=True,
             return_sequences=True,
             **kwargs,
         )
+
+
+
+class SlidingWindow:
+    """SlidingWindow."""
+
+    def __init__(self, n_nodes: int, input_d: int, window_size: int):
+        """Create a node memory based on the number of nodes and the state dimension.
+
+        Args:
+            n_nodes: int, number of nodes to remember.
+            hidden_d: int, the hidden state's dimension.
+            n_layers: int, number of targeting rnn layers.
+        """
+        self.n_nodes = n_nodes
+        self.window_size = window_size
+        self.input_d = input_d
+        self.reset_state()
+
+    def reset_state(self):
+        """Reset the memory to a random tensor."""
+        self.memory = [[[0 for d in self.input_d] for w in self.window_size] for n in self.n_nodes]
+
+    def update_window(self, new_window, inx):
+        """Update memory [N,W,D]."""
+        new_memory = self.memory[inx]
+
+        self.memory[inx] = new_memory.numpy()
+
+    def get_memory(self, inx):
+        """Retrieve node memory by index.Return shape [L,N,D]."""
+        selected = self.memory[inx]
+        result = np.einsum('lij->ilj', selected)
+        return result
+
+
+"""
+class SlidingWindowFamily(BaseModel):
+    """Prototype of sliding window based sequential decoders."""
+
+    def __init__(self, hidden_d: int, window_size: int,  simple_decoder: SimpleDecoder):
+        """Create a sequential decoder.
+
+        Args:
+            hidden_d: int, the hidden state's dimension.
+            window_size: int, the length of the sliding window
+            simple_decoder: SimpleDecoder, the outputing simple decoder.
+        """
+        super().__init__(hidden_d, simple_decoder)
+        self.window_size = window_size
+        self.training_mode = True
+
+    
+
+class SelfAttention(SlidingWindowFamily):
+    
+    def __init__(self,num_heads:int, key_dim: int, hidden_d: int, window_size: int,  simple_decoder: SimpleDecoder, **kwargs):
+        """Create a sequential decoder.
+
+        Args:
+            num_heads: int, number of attention heads
+            key_dim: int, dimension of input key
+            hidden_d: int, the hidden state's dimension.
+            window_size: int, the length of the sliding window
+            simple_decoder: SimpleDecoder, the outputing simple decoder.
+        """
+        super().__init__(hidden_d, simple_decoder)
+        self.base_model = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim = hidden_d, **kwargs)
+    def call(self, in_state: Tuple[Tensor, List[int]]):
+        """Forward function."""
+        # node_embs: [|V|, |hidden_dim|]
+        # sequence length = 1
+        # the sequential model processes each node at each step
+        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
+        node_embs, ids = in_state
+        ids = ids.numpy()
+        node_embs = tf.gather(node_embs, ids)
+        out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
+        h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
+        out_result = self.base_model(out_sequential, initial_state=h)
+        out_sequential = out_result[0]
+        if self.training_mode:
+            new_h = out_result[1:]
+            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
+        return out
+"""

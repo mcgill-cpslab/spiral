@@ -34,15 +34,17 @@ if __name__ == '__main__':
     encoders = ['gcn', 'sgcn', 'gat', 'sage']
     decoders = ['lstm', 'gru', 'rnn']
     epochs = 2000
-    for g in range(4):
-        for r in range(3):
+    for g in range(1,4):
+        for r in range(1,3):
             #set up logger
             this_logger = logging.getLogger('citation_predictoin_pipeline')
             this_logger.setLevel(logging.INFO)
             # create file handler which logs even debug messages
-            log_path = f"model_{g}_{r}.log"
+            log_path = f"model_{encoders[g]}_{decoders[r]}.log"
             fh = logging.FileHandler(log_path)
             fh.setLevel(logging.DEBUG)
+            for hdlr in this_logger.handlers[:]:  # remove all old handlers
+                this_logger.removeHandler(hdlr)
             this_logger.addHandler(fh)
             this_logger.info("--------------------------------------------------------")
             for trial in range(5):
@@ -107,12 +109,9 @@ if __name__ == '__main__':
                     print(eval_loss[-1])
                     mini = min(eval_loss)
                     if epoch > 10:
-                        if all(eval_loss[-10:] > mini):
+                        if all(eval_loss[-20:] > mini):
                             print(mini)
                             break
-                        if all(eval_loss[-2:] > mini):
-                            lr = lr / 2
-                            optimizer = keras.optimizers.Adam(learning_rate=lr, epsilon=1e-8)
                         if eval_loss[-1] == mini:
                             print(f"save best model for loss {mini}")
                             this_model.save_model(save_path)
