@@ -12,17 +12,18 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Model assembler for pytorch."""
-from torch.nn import Module
+"""Nine Turn specific errors and exceptions."""
+# flake8: noqa
+# Dynamic import, no need for lint
+from nineturn.core.backends import PYTORCH, TENSORFLOW
+from nineturn.core.errors import BackendNotSupportedError
+from nineturn.core.utils import _get_backend
 
+this_backend = _get_backend()
 
-class Assembler(Module):
-    def __init__(self, encoder, decoder):
-        super().__init__()
-        self.encoder = encoder
-        self.decoder = decoder
-
-    def forward(self, input_state):
-        h = self.encoder(input_state)
-        h = self.decoder(h)
-        return h
+if this_backend == TENSORFLOW:
+    from nineturn.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN
+elif this_backend == PYTORCH:
+    from nineturn.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN
+else:
+    raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

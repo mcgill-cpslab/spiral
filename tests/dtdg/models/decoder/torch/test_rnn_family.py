@@ -16,7 +16,7 @@ def test_ogb_dataset_torch():
     n_nodes = 5
     hidden_d = 2
     n_layers = 3
-    this_memory = NodeMemory(n_nodes,hidden_d,n_layers,"cpu")
+    this_memory = NodeMemory(n_nodes,hidden_d,n_layers)
     old_memory = this_memory.memory.clone()
     this_memory.reset_state()
     assert not torch.equal(old_memory, this_memory.memory)

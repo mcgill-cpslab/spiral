@@ -14,6 +14,7 @@
 # ==============================================================================
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
 
+import copy
 from abc import abstractmethod
 from typing import List, Tuple, Union
 
@@ -26,43 +27,60 @@ from nineturn.dtdg.models.decoder.torch.simpleDecoder import SimpleDecoder
 class NodeMemory:
     """NodeMemory to remember states for each node."""
 
-    def __init__(
-        self, n_nodes: int, hidden_d: int, n_layers: int, device: Union[str, torch.device], memory_on_cpu: bool = False
-    ):
+    def __init__(self, n_nodes: int, hidden_d: int, n_layers: int):
         """Create a node memory based on the number of nodes and the state dimension.
 
         Args:
             n_nodes: int, number of nodes to remember.
             hidden_d: int, the hidden state's dimension.
             n_layers: int, number of targeting rnn layers.
-            device: str or torch.device, the device this model will run. mainly for node memory.
-            memory_on_cpu: bool, whether to store memory in ram instead of the running device.
         """
         self.n_nodes = n_nodes
         self.hidden_d = hidden_d
         self.n_layers = n_layers
-        self.device = device
-        if memory_on_cpu:
-            self.device = "cpu"
         self.reset_state()
 
     def reset_state(self):
         """Reset the memory to a random tensor."""
-        self.memory = torch.randn(self.n_layers, self.n_nodes, self.hidden_d).to(self.device)
+        self.memory = torch.randn(self.n_layers, self.n_nodes, self.hidden_d)
 
     def update_memory(self, new_memory, inx):
         """Update memory."""
-        self.memory[:, inx, :] = new_memory.to(self.device)
+        self.memory[:, inx, :] = new_memory
 
-    def get_memory(self, inx, device):
+    def get_memory(self, inx):
         """Retrieve node memory by index."""
         return self.memory[:, inx, :]
+
+    @property
+    def device(self):
+        """Which device it is currently at."""
+        return self.memory.device
+
+    def to(self, device, **kwargs):  # pylint: disable_invalide_name
+        """Move the snapshot to the targeted device (cpu/gpu).
+
+        If the graph is already on the specified device, the function directly returns it.
+        Otherwise, it returns a cloned graph on the specified device.
+
+        Args:
+            device : Framework-specific device context object
+                The context to move data to (e.g., ``torch.device``).
+            kwargs : Key-word arguments.
+                Key-word arguments fed to the framework copy function.
+        """
+        if device is None or self.device == device:
+            return self
+
+        ret = copy.copy(self)
+        ret.memory = self.memory.to(device, **kwargs)
+        return ret
 
 
 class SequentialDecoder(nn.Module):
     """Prototype of sequential decoders."""
 
-    def __init__(self, hidden_d: int, n_nodes: int, simple_decoder: SimpleDecoder, device: Union[str, torch.device]):
+    def __init__(self, hidden_d: int, n_nodes: int, n_layers: int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
 
         Args:
@@ -75,30 +93,66 @@ class SequentialDecoder(nn.Module):
         self.n_nodes = n_nodes
         self.hidden_d = hidden_d
         self.mini_batch = False
+        self.base_model = None
         self.simple_decoder = simple_decoder
-        self.device = device
+        self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers)
+        self.training_mode = True
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""
         self.mini_batch = mini_batch
 
-    @abstractmethod
-    def reset_memory_state(self, new_memory):
-        """Reset the node memory for hidden states."""
-        pass
+    @property
+    def device(self):
+        """Which device it is currently at."""
+        return next(self.base_model.parameters()).device
 
-    @abstractmethod
-    def forward(self, in_sample: Tuple[torch.Tensor, List]) -> torch.Tensor:
-        """All SequentialDecoder subclass should have a forward function.
+    def to(self, device, **kwargs):  # pylint: disable_invalide_name
+        """Move the snapshot to the targeted device (cpu/gpu).
+
+        If the graph is already on the specified device, the function directly returns it.
+        Otherwise, it returns a cloned graph on the specified device.
 
         Args:
-            in_sample: tuple, first entry is a node-wise embedding from an encoder,
-                       second entry is the list[int] of targeted node ids.
-
-        Return:
-            tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
+            device : Framework-specific device context object
+                The context to move data to (e.g., ``torch.device``).
+            kwargs : Key-word arguments.
+                Key-word arguments fed to the framework copy function.
         """
-        pass
+        if device is None or self.device == device:
+            return self
+
+        ret = copy.copy(self)
+        ret.base_model = self.base_model.to(device, **kwargs)
+        ret.simple_decoder = self.simple_decoder.to(device, **kwargs)
+        ret.memory_h = self.memory_h.to(device, **kwargs)
+        return ret
+
+    def training(self):
+        self.training_mode = True
+
+    def eval_mode(self):
+        self.training_mode = False
+
+    def reset_memory_state(self):
+        """Reset the node memory for hidden states."""
+        self.memory_h.reset_state()
+
+    def forward(self, in_state: Tuple[torch.Tensor, List[int]]):
+        """Forward function."""
+        # node_embs: [|V|, |hidden_dim|]
+        # sequence length = 1
+        # the sequential model processes each node at each step
+        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
+        node_embs, ids = in_state
+        if not self.mini_batch:
+            node_embs = node_embs[ids]
+        h = self.memory_h.get_memory(ids)
+        out_sequential, h = self.base_model(node_embs.view(-1, 1, self.input_d), h)
+        if self.training_mode:
+            self.memory_h.update_memory(h.detach().clone(), ids)
+        out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
+        return out
 
 
 class LSTM(SequentialDecoder):
@@ -111,8 +165,6 @@ class LSTM(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        device: Union[str, torch.device],
-        memory_on_cpu: bool = False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -123,21 +175,38 @@ class LSTM(SequentialDecoder):
             n_nodes: int, number of nodes.
             n_layers: int, number of lstm layers.
             simple_decoder: an instance of SimpleDecoder.
-            device: str or torch.device, the device this model will run. Mainly for node memory.
-            memory_on_cpu: bool, whether to store memory in RAM instead of the running device.
+            memory_on_cpu: bool, always put node memory to cpu.
         """
-        super().__init__(hidden_d, n_nodes, simple_decoder, device)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
-        self.lstm = nn.LSTM(
+        self.base_model = nn.LSTM(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
         ).float()
-        self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers, device, memory_on_cpu)
-        self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers, device, memory_on_cpu)
+        self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
         self.memory_c.reset_state()
+
+    def to(self, device, **kwargs):  # pylint: disable_invalide_name
+        """Move the snapshot to the targeted device (cpu/gpu).
+
+        If the graph is already on the specified device, the function directly returns it.
+        Otherwise, it returns a cloned graph on the specified device.
+
+        Args:
+            device : Framework-specific device context object
+                The context to move data to (e.g., ``torch.device``).
+            kwargs : Key-word arguments.
+                Key-word arguments fed to the framework copy function.
+        """
+        if device is None or self.device == device:
+            return self
+
+        ret = super(self).to(device)
+        ret.memory_c = self.memory_c.to(device, **kwargs)
+        return ret
 
     def forward(self, in_state: Tuple[torch.Tensor, List[int]]):
         """Forward function."""
@@ -148,11 +217,12 @@ class LSTM(SequentialDecoder):
         node_embs, ids = in_state
         if not self.mini_batch:
             node_embs = node_embs[ids]
-        h = self.memory_h.get_memory(ids, self.device)
-        c = self.memory_c.get_memory(ids, self.device)
-        out_sequential, (h, c) = self.lstm(node_embs.view(-1, 1, self.input_d), (h, c))
-        self.memory_h.update_memory(h.detach().clone(), ids)
-        self.memory_c.update_memory(c.detach().clone(), ids)
+        h = self.memory_h.get_memory(ids)
+        c = self.memory_c.get_memory(ids)
+        out_sequential, (h, c) = self.base_model(node_embs.view(-1, 1, self.input_d), (h, c))
+        if self.training_mode:
+            self.memory_h.update_memory(h.detach().clone(), ids)
+            self.memory_c.update_memory(c.detach().clone(), ids)
         out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
         return out
 
@@ -167,8 +237,6 @@ class GRU(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        device: Union[str, torch.device],
-        memory_on_cpu: bool = False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -179,34 +247,13 @@ class GRU(SequentialDecoder):
             n_nodes: int, number of nodes.
             n_layers: int, number of GRU layers.
             simple_decoder: an instance of SimpleDecoder.
-            device: str or torch.device, the device this model will run. Mainly for node memory.
             memory_on_cpu: bool, whether to store hidden state memory on RAM.
         """
-        super().__init__(hidden_d, n_nodes, simple_decoder, device)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder, memory_on_cpu)
         self.input_d = input_d
-        self.gru = nn.GRU(
+        self.base_model = nn.GRU(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
-        ).float()
-        self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers, device, memory_on_cpu)
-
-    def reset_memory_state(self):
-        """Reset the node memory for hidden states."""
-        self.memory_h.reset_state()
-
-    def forward(self, in_state: Tuple[torch.Tensor, List[int]]):
-        """Forward function."""
-        # node_embs: [|V|, |hidden_dim|]
-        # sequence length = 1
-        # the sequential model processes each node at each step
-        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        if not self.mini_batch:
-            node_embs = node_embs[ids]
-        h = self.memory_h.get_memory(ids, self.device)
-        out_sequential, h = self.gru(node_embs.view(-1, 1, self.input_d), h)
-        self.memory_h.update_memory(h.detach().clone(), ids)
-        out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
-        return out
+        )
 
 
 class RNN(SequentialDecoder):
@@ -219,7 +266,6 @@ class RNN(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        device: Union[str, torch.device],
         memory_on_cpu: bool = False,
         **kwargs,
     ):
@@ -231,31 +277,10 @@ class RNN(SequentialDecoder):
             n_nodes: int, number of nodes.
             n_layers: int, number of GRU layers.
             simple_decoder: an instance of SimpleDecoder.
-            device: str or torch.device, the device this model will run. Mainly for node memory.
             memory_on_cpu: bool, whether to store hidden state memory on RAM.
         """
-        super().__init__(hidden_d, n_nodes, simple_decoder, device)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder, memory_on_cpu)
         self.input_d = input_d
-        self.rnn = nn.RNN(
+        self.base_model = nn.RNN(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
-        ).float()
-        self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers, device, memory_on_cpu)
-
-    def reset_memory_state(self):
-        """Reset the node memory for hidden states."""
-        self.memory_h.reset_state()
-
-    def forward(self, in_state: Tuple[torch.Tensor, List[int]]):
-        """Forward function."""
-        # node_embs: [|V|, |hidden_dim|]
-        # sequence length = 1
-        # the sequential model processes each node at each step
-        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        if not self.mini_batch:
-            node_embs = node_embs[ids]
-        h = self.memory_h.get_memory(ids, self.device)
-        out_sequential, h = self.rnn(node_embs.view(-1, 1, self.input_d), h)
-        self.memory_h.update_memory(h.detach().clone(), ids)
-        out = self.simple_decoder((out_sequential.view(-1, self.hidden_d), ids))
-        return out
+        )

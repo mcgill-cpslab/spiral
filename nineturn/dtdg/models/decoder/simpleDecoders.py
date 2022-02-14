@@ -12,4 +12,22 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Nine Turn specific errors and exceptions."""
+"""Dynamic import common functions based on backend."""
+# flake8: noqa
+# Dynamic import, no need for lint
+from nineturn.core.backends import PYTORCH, TENSORFLOW
+from nineturn.core.errors import BackendNotSupportedError
+from nineturn.core.utils import _get_backend
+
+this_backend = _get_backend()
+
+if this_backend == TENSORFLOW:
+    from nineturn.dtdg.models.decoder.tf.simpleDecoder import MLP as MLP
+
+
+elif this_backend == PYTORCH:
+    from nineturn.dtdg.models.decoder.torch.simpleDecoder import MLP as MLP
+
+
+else:
+    raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

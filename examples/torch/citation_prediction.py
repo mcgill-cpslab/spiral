@@ -1,20 +1,18 @@
 import numpy as np
 import torch
-import torch.nn as nn
 import torch.nn.functional as F
 import logging
+import datetime
 
 from nineturn.core.backends import PYTORCH
 from nineturn.core.config import  set_backend
 set_backend(PYTORCH)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
-from nineturn.dtdg.models.encoder.implicitTimeEncoder.torch.staticGraphEncoder import GCN, GAT, SGCN, GraphSage
-from nineturn.dtdg.models.decoder.torch.sequentialDecoder.rnnFamily import LSTM, GRU,RNN
-from nineturn.dtdg.models.decoder.torch.simpleDecoder import MLP
+from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, GAT, SGCN, GraphSage
+from nineturn.dtdg.models.decoder.sequentialDecoders import LSTM, GRU,RNN
+from nineturn.dtdg.models.decoder.simpleDecoders import MLP
+from nineturn.automl.model_assembler import assembler
 
-
-def assembler(encoder, decoder):
-    return nn.Sequential(encoder,decoder).to(device)
 
 """
 def loss_fn(predict, label):
@@ -42,14 +40,15 @@ if __name__ == '__main__':
     hidden_dim = 32
     num_GNN_layers = 2
     num_RNN_layers = 2
-    #gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True, dropout=0.2).to(device)
+    activation_f = F.leaky_relu
+    #gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True, dropout=0.2).to(device)
     #gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True).to(device)
-    #gnn = GAT([1], in_dim, hidden_dim,  activation=F.leaky_relu,allow_zero_in_degree=True).to(device)
-    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=F.leaky_relu)
+    #gnn = GAT([1], in_dim, hidden_dim,  activation=activation_f,allow_zero_in_degree=True).to(device)
+    gnn = GraphSage('gcn', in_dim, hidden_dim,  activation=activation_f)
     output_decoder = MLP(10, [10,20,10,5])
-    #decoder = LSTM( hidden_dim, 10,n_nodes,3,output_decoder, device)
-    #decoder = GRU( hidden_dim, 10,n_nodes,3,output_decoder, device)
-    decoder = RNN( hidden_dim, 10,n_nodes,3,output_decoder, device)
+    decoder = LSTM( hidden_dim, 10,n_nodes,3,output_decoder)
+    #decoder = GRU( hidden_dim, 10,n_nodes,3,output_decoder)
+    #decoder = RNN( hidden_dim, 10,n_nodes,3,output_decoder)
     #this_model = LSTM( in_dim, 10,n_nodes,device).to(device)
     this_model = assembler(gnn, decoder).to(device)
     loss_fn = torch.nn.MSELoss().to(device)
@@ -59,7 +58,7 @@ if __name__ == '__main__':
     loss_list=[]
     all_predictions=[]
     for epoch in range(20):
-        this_model[1].reset_memory_state()
+        this_model.decoder.reset_memory_state()
         for t in range(5,n_snapshot-2):
             this_model.train()
             optimizer.zero_grad()
