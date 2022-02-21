@@ -7,7 +7,7 @@ from tests.core.common_functions import *
 
 
 def test_node_memory_tf():
-    """Test node memory"""
+    """Test NodeMemory"""
     clear_background()
     from nineturn.core.config import set_backend
     from nineturn.core.backends import TENSORFLOW

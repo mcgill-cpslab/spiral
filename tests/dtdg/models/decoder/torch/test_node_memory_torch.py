@@ -6,8 +6,8 @@ from tests.core.common_functions import *
 
 
 def test_node_memory_torch():
+    """Test NodeMemory"""
     clear_background()
-    """Test that citation graph could support different backend."""
     from nineturn.core.config import set_backend
     from nineturn.core.backends import PYTORCH
     set_backend(PYTORCH)
