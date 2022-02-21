@@ -21,11 +21,13 @@ from typing import List, Tuple, Union
 import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
-from tensorflow.keras.layers import MultiHeadAttention, RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNCell
+from tensorflow.keras.layers import  RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNCell
 
 from nineturn.core.commonF import to_tensor
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel
+from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
+from nineturn.core.layers.tsa import TSA
+from nineturn.core.types import nt_layers_list
 
 class NodeMemory:
     """NodeMemory to remember states for each node."""
@@ -84,7 +86,8 @@ class RnnFamily(BaseModel):
         return [self.base_model.get_weights(), self.simple_decoder.get_weights(), self.memory_h.memory]
 
     def set_weights(self, weights):
-        super().set_weights(weights)
+        self.base_model.set_weights(weights[0])
+        self.simple_decoder.set_weights(weights[1])
         self.memory_h.memory = weights[2]
     
     def call(self, in_state: Tuple[Tensor, List[int]]):
@@ -100,9 +103,8 @@ class RnnFamily(BaseModel):
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         out_result = self.base_model(out_sequential, initial_state=h)
         out_sequential = out_result[0]
-        if self.training_mode:
-            new_h = out_result[1:]
-            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
+        new_h = out_result[1:]
+        self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
         out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
         return out
 
@@ -168,12 +170,11 @@ class LSTM(RnnFamily):
         hc = [(h[i], c[i]) for i in range(self.n_layers)]
         out_result = self.base_model(out_sequential, initial_state=hc)
         out_sequential = out_result[0]
-        if self.training_mode:
-            new_hc = out_result[1:]
-            new_h = [i[0] for i in new_hc]
-            new_c = [i[1] for i in new_hc]
-            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
-            self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)), [1, 0, 2]), ids)
+        new_hc = out_result[1:]
+        new_h = [i[0] for i in new_hc]
+        new_c = [i[1] for i in new_hc]
+        self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
+        self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)), [1, 0, 2]), ids)
         out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
         return out
 
@@ -238,60 +239,10 @@ class RNN(RnnFamily):
 
 
 
-class SlidingWindow:
-    """SlidingWindow."""
-
-    def __init__(self, n_nodes: int, input_d: int, window_size: int):
-        """Create a node memory based on the number of nodes and the state dimension.
-
-        Args:
-            n_nodes: int, number of nodes to remember.
-            hidden_d: int, the hidden state's dimension.
-            n_layers: int, number of targeting rnn layers.
-        """
-        self.n_nodes = n_nodes
-        self.window_size = window_size
-        self.input_d = input_d
-        self.reset_state()
-
-    def reset_state(self):
-        """Reset the memory to a random tensor."""
-        self.memory = [[[0 for d in self.input_d] for w in self.window_size] for n in self.n_nodes]
-
-    def update_window(self, new_window, inx):
-        """Update memory [N,W,D]."""
-        new_memory = self.memory[inx]
-
-        self.memory[inx] = new_memory.numpy()
-
-    def get_memory(self, inx):
-        """Retrieve node memory by index.Return shape [L,N,D]."""
-        selected = self.memory[inx]
-        result = np.einsum('lij->ilj', selected)
-        return result
-
-
-"""
-class SlidingWindowFamily(BaseModel):
-    """Prototype of sliding window based sequential decoders."""
-
-    def __init__(self, hidden_d: int, window_size: int,  simple_decoder: SimpleDecoder):
-        """Create a sequential decoder.
-
-        Args:
-            hidden_d: int, the hidden state's dimension.
-            window_size: int, the length of the sliding window
-            simple_decoder: SimpleDecoder, the outputing simple decoder.
-        """
-        super().__init__(hidden_d, simple_decoder)
-        self.window_size = window_size
-        self.training_mode = True
-
-    
 
 class SelfAttention(SlidingWindowFamily):
     
-    def __init__(self,num_heads:int, key_dim: int, hidden_d: int, window_size: int,  simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(self,num_heads:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
         """Create a sequential decoder.
 
         Args:
@@ -301,8 +252,12 @@ class SelfAttention(SlidingWindowFamily):
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
-        super().__init__(hidden_d, simple_decoder)
-        self.base_model = MultiHeadAttention(num_heads=num_heads, key_dim=key_dim, value_dim = hidden_d, **kwargs)
+        super().__init__(input_d, n_nodes, window_size, simple_decoder)
+        self.nn_layers = nt_layers_list()
+        for emb in embed_dims:
+            self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
+
+
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -312,13 +267,56 @@ class SelfAttention(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
-        h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
-        out_result = self.base_model(out_sequential, initial_state=h)
-        out_sequential = out_result[0]
-        if self.training_mode:
-            new_h = out_result[1:]
-            self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
+        self.memory.update_window(node_embs.numpy(),ids)
+        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #[N, W, D] N serve as batch size in this case
+        current = tf.identity(input_windows)
+        for layer in self.nn_layers:
+            new_current = layer(current, current) 
+            current = tf.identity(new_current)
+        last_sequence = tf.slice(current,
+                [0,self.window_size-1, 0],
+                [current.shape[0], 1, current.shape[2]])
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
         return out
-"""
+
+
+
+class PTSA(SlidingWindowFamily):
+    
+    def __init__(self,num_heads:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+        """Create a sequential decoder.
+
+        Args:
+            num_heads: int, number of attention heads
+            input_d: int, dimension of inputs 
+            embed_dims: List[int], the hidden states of each TSA layer in the model.
+            window_size: int, the length of the sliding window
+            simple_decoder: SimpleDecoder, the outputing simple decoder.
+        """
+        super().__init__(input_d, n_nodes, window_size, simple_decoder)
+        self.nn_layers = nt_layers_list()
+        for emb in embed_dims:
+            self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
+        self.positional_embedding = tf.Variable(tf.random.uniform([window_size, input_d], dtype=tf.float32))
+
+
+    def call(self, in_state: Tuple[Tensor, List[int]]):
+        """Forward function."""
+        # node_embs: [|V|, |hidden_dim|]
+        # sequence length = 1
+        # the sequential model processes each node at each step
+        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
+        node_embs, ids = in_state
+        ids = ids.numpy()
+        node_embs = tf.gather(node_embs, ids)
+        self.memory.update_window(node_embs.numpy(),ids)
+        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #N, W, D N serve as batch size in this case
+        Q = input_windows
+        K = input_windows + self.positional_embedding
+        for layer in self.nn_layers:
+            input_windows = layer(Q, K, K) 
+        last_sequence = tf.slice(input_windows,
+                [0,self.window_size-1, 0],
+                [input_windows.shape[0], 1, input_windows.shape[2]])
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_windows.shape[2]]), ids))
+        return out
