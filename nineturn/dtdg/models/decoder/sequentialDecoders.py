@@ -22,7 +22,8 @@ from nineturn.core.utils import _get_backend
 this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:
-    from nineturn.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN
+    from nineturn.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN, SelfAttention, PTSA
+    from nineturn.dtdg.models.decoder.tf.sequentialDecoder.explicitTimeDecoder import FTSA
 elif this_backend == PYTORCH:
     from nineturn.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN
 else:
