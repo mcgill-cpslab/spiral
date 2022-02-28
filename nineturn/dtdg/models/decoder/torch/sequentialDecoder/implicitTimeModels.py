@@ -15,8 +15,7 @@
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
 
 import copy
-from abc import abstractmethod
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 import torch
 import torch.nn as nn
@@ -86,8 +85,8 @@ class SequentialDecoder(nn.Module):
         Args:
             hidden_d: int, the hidden state's dimension.
             n_nodes: int, number of nodes to remember.
+            n_layers: int, number of targeting rnn layers.
             simple_decoder: SimpleDecoder, the outputing simple decoder.
-            device: str or torch.device, the device this model will run. mainly for node memory.
         """
         super().__init__()
         self.n_nodes = n_nodes
@@ -129,9 +128,11 @@ class SequentialDecoder(nn.Module):
         return ret
 
     def training(self):
+        """Start training."""
         self.training_mode = True
 
     def eval_mode(self):
+        """Stop training."""
         self.training_mode = False
 
     def reset_memory_state(self):
@@ -249,7 +250,7 @@ class GRU(SequentialDecoder):
             simple_decoder: an instance of SimpleDecoder.
             memory_on_cpu: bool, whether to store hidden state memory on RAM.
         """
-        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder, memory_on_cpu)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
         self.base_model = nn.GRU(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
