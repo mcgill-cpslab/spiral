@@ -121,7 +121,7 @@ class FTSASum(SlidingWindowFamily):
     def build(self, input_shape):
         print(self.time_kernel)
         self.wk = self.add_weight(
-            shape=(1, self.time_kernel),
+            shape=(self.time_kernel,1),
             initializer='uniform',
             trainable=True
         )
@@ -148,7 +148,10 @@ class FTSASum(SlidingWindowFamily):
             input_with_time = layer(input_with_time,input_with_time)
 
         input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, self.time_kernel, -1]) 
-        input_with_time = tf.tensordot(input_with_time, tf.squeeze(self.wk), [[2],[0]])
+        input_with_time = tf.transpose(input_with_time, [0,1,3,2]) 
+        input_with_time = tf.reshape(input_with_time, [-1, self.time_kernel]) 
+        input_with_time = tf.matmul(input_with_time, self.wk) #n*w*d 1
+        input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, -1]) # N W D
         last_sequence = tf.slice(input_with_time,
                 [0,self.window_size-1, 0],
                 [input_with_time.shape[0], 1, input_with_time.shape[2]])
