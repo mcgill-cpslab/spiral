@@ -26,7 +26,7 @@ from tensorflow.keras.layers import  RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNC
 from nineturn.core.commonF import to_tensor
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
 from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
-from nineturn.core.layers.tsa import TSA
+from nineturn.core.layers import TSA
 from nineturn.core.types import nt_layers_list
 
 class NodeMemory:
@@ -319,4 +319,44 @@ class PTSA(SlidingWindowFamily):
                 [0,self.window_size-1, 0],
                 [input_windows.shape[0], 1, input_windows.shape[2]])
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_windows.shape[2]]), ids))
+        return out
+
+
+class Conv1D(SlidingWindowFamily):
+    
+    def __init__(self,num_filter:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+        """Create a sequential decoder.
+
+        Args:
+            num_heads: int, number of attention heads
+            key_dim: int, dimension of input key
+            hidden_d: int, the hidden state's dimension.
+            window_size: int, the length of the sliding window
+            simple_decoder: SimpleDecoder, the outputing simple decoder.
+        """
+        super().__init__(input_d, n_nodes, window_size, simple_decoder)
+        self.nn_layers = nt_layers_list()
+        for emb in embed_dims:
+            self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
+
+
+    def call(self, in_state: Tuple[Tensor, List[int]]):
+        """Forward function."""
+        # node_embs: [|V|, |hidden_dim|]
+        # sequence length = 1
+        # the sequential model processes each node at each step
+        # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
+        node_embs, ids = in_state
+        ids = ids.numpy()
+        node_embs = tf.gather(node_embs, ids)
+        self.memory.update_window(node_embs.numpy(),ids)
+        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #[N, W, D] N serve as batch size in this case
+        current = tf.identity(input_windows)
+        for layer in self.nn_layers:
+            new_current = layer(current, current) 
+            current = tf.identity(new_current)
+        last_sequence = tf.slice(current,
+                [0,self.window_size-1, 0],
+                [current.shape[0], 1, current.shape[2]])
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
         return out

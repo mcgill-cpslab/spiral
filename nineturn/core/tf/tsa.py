@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tensorflow based time2vec encoding."""
+"""Tensorflow based temporal self-attention layer."""
 from typing import List, Tuple, Union
 
 import numpy as np
