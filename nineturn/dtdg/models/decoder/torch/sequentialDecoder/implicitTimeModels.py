@@ -248,7 +248,6 @@ class GRU(SequentialDecoder):
             n_nodes: int, number of nodes.
             n_layers: int, number of GRU layers.
             simple_decoder: an instance of SimpleDecoder.
-            memory_on_cpu: bool, whether to store hidden state memory on RAM.
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
@@ -278,7 +277,6 @@ class RNN(SequentialDecoder):
             n_nodes: int, number of nodes.
             n_layers: int, number of GRU layers.
             simple_decoder: an instance of SimpleDecoder.
-            memory_on_cpu: bool, whether to store hidden state memory on RAM.
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder, memory_on_cpu)
         self.input_d = input_d
