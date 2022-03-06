@@ -22,10 +22,12 @@ from nineturn.core.utils import _get_backend
 this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:
-    from nineturn.core.tf_functions import _to_tensor as to_tensor, reshape_tensor
+    from nineturn.core.tf_functions import _to_tensor as to_tensor
+    from nineturn.core.tf_functions import reshape_tensor
 
 elif this_backend == PYTORCH:
-    from nineturn.core.torch_functions import _to_tensor as to_tensor, reshape_tensor
+    from nineturn.core.torch_functions import _to_tensor as to_tensor
+    from nineturn.core.torch_functions import reshape_tensor
 
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))

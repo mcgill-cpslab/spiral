@@ -14,5 +14,5 @@ def nt_layers_list() -> List:
     return []
 
 
-def reshape_tensor(h: tf.Tensor, new_shape:List[int]) -> tf.Tensor:
-    return tf.reshape(h,new_shape)
+def reshape_tensor(h: tf.Tensor, new_shape: List[int]) -> tf.Tensor:
+    return tf.reshape(h, new_shape)

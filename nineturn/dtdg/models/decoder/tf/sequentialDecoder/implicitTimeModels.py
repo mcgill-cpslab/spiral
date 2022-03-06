@@ -21,13 +21,15 @@ from typing import List, Tuple, Union
 import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
-from tensorflow.keras.layers import  RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNCell, MultiHeadAttention
+from tensorflow.keras.layers import RNN as TfRnn
+from tensorflow.keras.layers import GRUCell, LSTMCell, MultiHeadAttention, SimpleRNNCell
 
 from nineturn.core.commonF import to_tensor
-from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
 from nineturn.core.layers import TSA, Conv1d, Time2Vec
 from nineturn.core.types import nt_layers_list
+from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
+from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
+
 
 class NodeMemory:
     """NodeMemory to remember states for each node."""
@@ -60,7 +62,6 @@ class NodeMemory:
         return result
 
 
-
 class RnnFamily(BaseModel):
     """Prototype of RNN family sequential decoders."""
 
@@ -89,7 +90,7 @@ class RnnFamily(BaseModel):
         self.base_model.set_weights(weights[0])
         self.simple_decoder.set_weights(weights[1])
         self.memory_h.memory = weights[2]
-    
+
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -238,11 +239,17 @@ class RNN(RnnFamily):
         )
 
 
-
-
 class SelfAttention(SlidingWindowFamily):
-    
-    def __init__(self,num_heads:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(
+        self,
+        num_heads: int,
+        input_d: int,
+        embed_dims: List[int],
+        n_nodes: int,
+        window_size: int,
+        simple_decoder: SimpleDecoder,
+        **kwargs,
+    ):
         """Create a sequential decoder.
 
         Args:
@@ -257,7 +264,6 @@ class SelfAttention(SlidingWindowFamily):
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
 
-
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -267,28 +273,35 @@ class SelfAttention(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        self.memory.update_window(node_embs.numpy(),ids)
-        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #[N, W, D] N serve as batch size in this case
+        self.memory.update_window(node_embs.numpy(), ids)
+        input_windows = tf.convert_to_tensor(
+            self.memory.get_memory(ids), dtype=tf.float32
+        )  # [N, W, D] N serve as batch size in this case
         current = tf.identity(input_windows)
         for layer in self.nn_layers:
-            new_current = layer(current, current) 
+            new_current = layer(current, current)
             current = tf.identity(new_current)
-        last_sequence = tf.slice(current,
-                [0,self.window_size-1, 0],
-                [current.shape[0], 1, current.shape[2]])
+        last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
         return out
 
 
-
 class PTSA(SlidingWindowFamily):
-    
-    def __init__(self,num_heads:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(
+        self,
+        num_heads: int,
+        input_d: int,
+        embed_dims: List[int],
+        n_nodes: int,
+        window_size: int,
+        simple_decoder: SimpleDecoder,
+        **kwargs,
+    ):
         """Create a sequential decoder.
 
         Args:
             num_heads: int, number of attention heads
-            input_d: int, dimension of inputs 
+            input_d: int, dimension of inputs
             embed_dims: List[int], the hidden states of each TSA layer in the model.
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
@@ -299,7 +312,6 @@ class PTSA(SlidingWindowFamily):
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
         self.positional_embedding = tf.Variable(tf.random.uniform([window_size, input_d], dtype=tf.float32))
 
-
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -309,34 +321,52 @@ class PTSA(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        self.memory.update_window(node_embs.numpy(),ids)
-        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #N, W, D N serve as batch size in this case
+        self.memory.update_window(node_embs.numpy(), ids)
+        input_windows = tf.convert_to_tensor(
+            self.memory.get_memory(ids), dtype=tf.float32
+        )  # N, W, D N serve as batch size in this case
         Q = input_windows
         K = input_windows + self.positional_embedding
         for layer in self.nn_layers:
-            input_windows = layer(Q, K, K) 
-        last_sequence = tf.slice(input_windows,
-                [0,self.window_size-1, 0],
-                [input_windows.shape[0], 1, input_windows.shape[2]])
+            input_windows = layer(Q, K, K)
+        last_sequence = tf.slice(
+            input_windows, [0, self.window_size - 1, 0], [input_windows.shape[0], 1, input_windows.shape[2]]
+        )
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_windows.shape[2]]), ids))
         return out
 
 
-def FTSA(num_heads:int,  input_d:int,embed_dims:List[int], n_nodes:int, window_size: int, time_kernel:int, 
-        time_agg:str, simple_decoder: SimpleDecoder, **kwargs):
+def FTSA(
+    num_heads: int,
+    input_d: int,
+    embed_dims: List[int],
+    n_nodes: int,
+    window_size: int,
+    time_kernel: int,
+    time_agg: str,
+    simple_decoder: SimpleDecoder,
+    **kwargs,
+):
     model = None
     if time_agg == 'concate':
-        model = FTSAConcate(num_heads,input_d,embed_dims,n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
+        model = FTSAConcate(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
     elif time_agg == 'sum':
-        model = FTSASum(num_heads,input_d,embed_dims,n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
+        model = FTSASum(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
     return model
 
 
-
 class FTSAConcate(SlidingWindowFamily):
-    
-    def __init__(self,num_heads:int,  input_d:int,embed_dims:List[int], n_nodes:int, window_size: int, time_kernel:int,
-            simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(
+        self,
+        num_heads: int,
+        input_d: int,
+        embed_dims: List[int],
+        n_nodes: int,
+        window_size: int,
+        time_kernel: int,
+        simple_decoder: SimpleDecoder,
+        **kwargs,
+    ):
         """Create a sequential decoder.
 
         Args:
@@ -344,7 +374,7 @@ class FTSAConcate(SlidingWindowFamily):
             key_dim: int, dimension of input key
             hidden_d: int, the hidden state's dimension.
             window_size: int, the length of the sliding window
-            time_kernel: int, kernel size of the time2vec embedding 
+            time_kernel: int, kernel size of the time2vec embedding
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
         super().__init__(input_d, n_nodes, window_size, simple_decoder)
@@ -358,12 +388,10 @@ class FTSAConcate(SlidingWindowFamily):
 
     def build(self, input_shape):
         self.wt = self.add_weight(
-            shape=(self.input_d + self.time_kernel , self.input_d),
-            initializer='uniform',
-            trainable=True
+            shape=(self.input_d + self.time_kernel, self.input_d), initializer='uniform', trainable=True
         )
         super().build(input_shape)
-        
+
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -373,27 +401,35 @@ class FTSAConcate(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        self.memory.update_window(node_embs.numpy(),ids)
-        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #N, W, D N serve as batch size in this case
+        self.memory.update_window(node_embs.numpy(), ids)
+        input_windows = tf.convert_to_tensor(
+            self.memory.get_memory(ids), dtype=tf.float32
+        )  # N, W, D N serve as batch size in this case
         time_encoding = self.time2vec(self.time_dimention)
-        #input_with_time dimension: [N, W, D+T]
-        input_with_time = tf.concat([input_windows, [time_encoding for i in
-            range(node_embs.shape[0])]], -1) 
-        input_with_time = tf.matmul(input_with_time, self.wt) #[N, W, D]
+        # input_with_time dimension: [N, W, D+T]
+        input_with_time = tf.concat([input_windows, [time_encoding for i in range(node_embs.shape[0])]], -1)
+        input_with_time = tf.matmul(input_with_time, self.wt)  # [N, W, D]
         for layer in self.nn_layers:
-            input_with_time = layer(input_with_time,input_with_time)
-        last_sequence = tf.slice(input_with_time,
-                [0,self.window_size-1, 0],
-                [input_with_time.shape[0], 1, input_with_time.shape[2]])
+            input_with_time = layer(input_with_time, input_with_time)
+        last_sequence = tf.slice(
+            input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
+        )
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids))
         return out
 
 
-
 class FTSASum(SlidingWindowFamily):
-    
-    def __init__(self,num_heads:int,  input_d:int,embed_dims:List[int], n_nodes:int, window_size: int, time_kernel:int,
-            simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(
+        self,
+        num_heads: int,
+        input_d: int,
+        embed_dims: List[int],
+        n_nodes: int,
+        window_size: int,
+        time_kernel: int,
+        simple_decoder: SimpleDecoder,
+        **kwargs,
+    ):
         """Create a sequential decoder.
 
         Args:
@@ -401,27 +437,21 @@ class FTSASum(SlidingWindowFamily):
             key_dim: int, dimension of input key
             hidden_d: int, the hidden state's dimension.
             window_size: int, the length of the sliding window
-            time_kernel: int, kernel size of the time2vec embedding 
+            time_kernel: int, kernel size of the time2vec embedding
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
         super().__init__(input_d, n_nodes, window_size, simple_decoder)
         self.nn_layers = nt_layers_list()
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
-        self.time2vec = Time2Vec(time_kernel,input_d, **kwargs)
-        self.time_dimention = tf.reshape(tf.range(window_size, dtype=tf.float32), [1,-1])
+        self.time2vec = Time2Vec(time_kernel, input_d, **kwargs)
+        self.time_dimention = tf.reshape(tf.range(window_size, dtype=tf.float32), [1, -1])
         self.time_kernel = time_kernel
         self.feature_size = input_d
 
-
     def build(self, input_shape):
         print(self.time_kernel)
-        self.wk = self.add_weight(
-            shape=(self.time_kernel,1),
-            initializer='uniform',
-            trainable=True
-        )
-
+        self.wk = self.add_weight(shape=(self.time_kernel, 1), initializer='uniform', trainable=True)
 
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
@@ -432,30 +462,39 @@ class FTSASum(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        self.memory.update_window(node_embs.numpy(),ids)
-        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #N, W, D N serve as batch size in this case
-        time_encoding = self.time2vec(self.time_dimention) # 1, W, D, K
-        time_encoding = tf.reshape(time_encoding, [-1, self.feature_size, self.time_kernel]) #W D K
-        input_with_time = tf.einsum('abc, bch->abch',input_windows ,time_encoding) # N W D K
-        input_with_time = tf.transpose(input_with_time, [0,1,3,2]) # N W k D
-        input_with_time = tf.reshape(input_with_time, [-1, self.window_size* self.time_kernel, self.feature_size]) 
+        self.memory.update_window(node_embs.numpy(), ids)
+        input_windows = tf.convert_to_tensor(
+            self.memory.get_memory(ids), dtype=tf.float32
+        )  # N, W, D N serve as batch size in this case
+        time_encoding = self.time2vec(self.time_dimention)  # 1, W, D, K
+        time_encoding = tf.reshape(time_encoding, [-1, self.feature_size, self.time_kernel])  # W D K
+        input_with_time = tf.einsum('abc, bch->abch', input_windows, time_encoding)  # N W D K
+        input_with_time = tf.transpose(input_with_time, [0, 1, 3, 2])  # N W k D
+        input_with_time = tf.reshape(input_with_time, [-1, self.window_size * self.time_kernel, self.feature_size])
         # N W*K D
         for layer in self.nn_layers:
-            input_with_time = layer(input_with_time,input_with_time)
+            input_with_time = layer(input_with_time, input_with_time)
 
-        input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, self.time_kernel, -1]) 
-        input_with_time = tf.tensordot(input_with_time, self.wk, [[2],[0]])
-        input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, -1]) 
-        last_sequence = tf.slice(input_with_time,
-                [0,self.window_size-1, 0],
-                [input_with_time.shape[0], 1, input_with_time.shape[2]])
+        input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, self.time_kernel, -1])
+        input_with_time = tf.tensordot(input_with_time, self.wk, [[2], [0]])
+        input_with_time = tf.reshape(input_with_time, [node_embs.shape[0], self.window_size, -1])
+        last_sequence = tf.slice(
+            input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
+        )
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids))
         return out
 
 
 class Conv1D(SlidingWindowFamily):
-    
-    def __init__(self, input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(
+        self,
+        input_d: int,
+        embed_dims: List[int],
+        n_nodes: int,
+        window_size: int,
+        simple_decoder: SimpleDecoder,
+        **kwargs,
+    ):
         """Create a sequential decoder.
 
         Args:
@@ -467,10 +506,9 @@ class Conv1D(SlidingWindowFamily):
         """
         super().__init__(input_d, n_nodes, window_size, simple_decoder)
         self.nn_layers = nt_layers_list()
-        self.nn_layers.append(Conv1d(input_d,embed_dims[0],window_size, **kwargs))
-        for i in range(1,len(embed_dims)):
-            self.nn_layers.append(Conv1d(embed_dims[i-1], embed_dims[i],window_size, **kwargs))
-
+        self.nn_layers.append(Conv1d(input_d, embed_dims[0], window_size, **kwargs))
+        for i in range(1, len(embed_dims)):
+            self.nn_layers.append(Conv1d(embed_dims[i - 1], embed_dims[i], window_size, **kwargs))
 
     def call(self, in_state: Tuple[Tensor, List[int]]):
         """Forward function."""
@@ -481,14 +519,14 @@ class Conv1D(SlidingWindowFamily):
         node_embs, ids = in_state
         ids = ids.numpy()
         node_embs = tf.gather(node_embs, ids)
-        self.memory.update_window(node_embs.numpy(),ids)
-        input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #[N, W, D] N serve as batch size in this case
+        self.memory.update_window(node_embs.numpy(), ids)
+        input_windows = tf.convert_to_tensor(
+            self.memory.get_memory(ids), dtype=tf.float32
+        )  # [N, W, D] N serve as batch size in this case
         current = tf.identity(input_windows)
         for layer in self.nn_layers:
-            new_current = layer(current) 
+            new_current = layer(current)
             current = tf.identity(new_current)
-        last_sequence = tf.slice(current,
-                [0,self.window_size-1, 0],
-                [current.shape[0], 1, current.shape[2]])
+        last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
         return out

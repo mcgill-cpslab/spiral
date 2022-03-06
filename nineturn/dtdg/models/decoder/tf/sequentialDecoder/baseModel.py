@@ -16,6 +16,7 @@
 
 import numpy as np
 from tensorflow.keras import layers
+
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
 
 
@@ -70,10 +71,10 @@ class SlidingWindow:
     def update_window(self, new_window, inx):
         """Update memory with input memory [N,D].
         Args:
-            new_window: numpy array, 
+            new_window: numpy array,
         """
-        self.memory[inx, :-1,:] = self.memory[inx, 1: ,:]
-        self.memory[inx, -1,:] = new_window
+        self.memory[inx, :-1, :] = self.memory[inx, 1:, :]
+        self.memory[inx, -1, :] = new_window
 
     def get_memory(self, inx):
         """Retrieve node memory by index.Return shape [N,W,D]."""
@@ -83,7 +84,7 @@ class SlidingWindow:
 class SlidingWindowFamily(BaseModel):
     """Prototype of sliding window based sequential decoders."""
 
-    def __init__(self, input_d:int, n_nodes:int, window_size: int,  simple_decoder: SimpleDecoder):
+    def __init__(self, input_d: int, n_nodes: int, window_size: int, simple_decoder: SimpleDecoder):
         """Create a sequential decoder.
 
         Args:
@@ -96,5 +97,3 @@ class SlidingWindowFamily(BaseModel):
         self.training_mode = True
         self.n_nodes = n_nodes
         self.memory = SlidingWindow(self.n_nodes, self.hidden_d, self.window_size)
-
-
