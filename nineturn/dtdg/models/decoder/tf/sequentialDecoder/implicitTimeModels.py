@@ -26,7 +26,7 @@ from tensorflow.keras.layers import  RNN as TfRnn, LSTMCell, GRUCell, SimpleRNNC
 from nineturn.core.commonF import to_tensor
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
 from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
-from nineturn.core.layers import TSA
+from nineturn.core.layers import TSA, Conv1d
 from nineturn.core.types import nt_layers_list
 
 class NodeMemory:
@@ -324,7 +324,7 @@ class PTSA(SlidingWindowFamily):
 
 class Conv1D(SlidingWindowFamily):
     
-    def __init__(self,num_filter:int,  input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
+    def __init__(self, input_d:int, embed_dims:List[int], n_nodes:int, window_size: int, simple_decoder: SimpleDecoder, **kwargs):
         """Create a sequential decoder.
 
         Args:
@@ -336,8 +336,9 @@ class Conv1D(SlidingWindowFamily):
         """
         super().__init__(input_d, n_nodes, window_size, simple_decoder)
         self.nn_layers = nt_layers_list()
-        for emb in embed_dims:
-            self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
+        self.nn_layers.append(Conv1d(input_d,embed_dims[0],window_size, **kwargs))
+        for i in range(1,len(embed_dims)):
+            self.nn_layers.append(Conv1d(embed_dims[i-1], embed_dims[i],window_size, **kwargs))
 
 
     def call(self, in_state: Tuple[Tensor, List[int]]):
@@ -353,7 +354,7 @@ class Conv1D(SlidingWindowFamily):
         input_windows = tf.convert_to_tensor(self.memory.get_memory(ids),dtype=tf.float32)  #[N, W, D] N serve as batch size in this case
         current = tf.identity(input_windows)
         for layer in self.nn_layers:
-            new_current = layer(current, current) 
+            new_current = layer(current) 
             current = tf.identity(new_current)
         last_sequence = tf.slice(current,
                 [0,self.window_size-1, 0],

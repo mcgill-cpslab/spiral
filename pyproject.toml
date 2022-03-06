@@ -47,6 +47,7 @@ pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
 dgl = {version = "0.6.1", optional = true}
+py7zr = {version = "^0.17", optional = true}
 torch = {version="1.10.2", optional=true}
 tensorflow = {version="^2.7.0",optional=true}
 ogb = "1.3.2"
@@ -63,8 +64,10 @@ test = [
     ]
 
 tf = ["tensorflow"]
+torch = ["torch"]
 
-dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version", "dgl", "torch","tensorflow","ogb"]
+dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version", "dgl",
+"torch","tensorflow","ogb","py7zr"]
 
 doc = [
     "mkdocs",

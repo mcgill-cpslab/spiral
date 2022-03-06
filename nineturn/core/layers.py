@@ -24,6 +24,7 @@ this_backend = _get_backend()
 if this_backend == TENSORFLOW:
     from nineturn.core.tf.time2Vec import Time2Vec
     from nineturn.core.tf.tsa import TSA
+    from nineturn.core.tf.conv1D import Conv1d
 
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))
