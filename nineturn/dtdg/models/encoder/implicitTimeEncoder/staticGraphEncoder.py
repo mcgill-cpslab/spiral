@@ -19,11 +19,11 @@ from typing import List, Tuple, Union
 
 from dgl import add_self_loop
 
+from nineturn.core.commonF import reshape_tensor
 from nineturn.core.errors import DimensionError
 from nineturn.core.logger import get_logger
 from nineturn.core.types import Dropout, GATConv, GraphConv, MLBaseModel, SAGEConv, SGConv, Tensor, nt_layers_list
 from nineturn.dtdg.types import BatchedSnapshot, Snapshot
-from nineturn.core.commonF import reshape_tensor
 
 logger = get_logger()
 
@@ -250,7 +250,7 @@ class GAT(StaticGraphEncoder):
         h = snapshot.node_feature()
         for i in range(self.n_layers):
             h = self.layers[i](g, h)
-            h = reshape_tensor(h,[-1, self.heads[i]*self.n_hidden])
+            h = reshape_tensor(h, [-1, self.heads[i] * self.n_hidden])
         return (h, dst_node_ids)
 
     def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List]) -> Tuple[Tensor, List]:
