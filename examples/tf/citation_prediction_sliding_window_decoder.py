@@ -8,7 +8,7 @@ from nineturn.core.config import  set_backend
 set_backend(TENSORFLOW)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
-from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA
+from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D
 from nineturn.dtdg.models.decoder.simpleDecoders import MLP
 from nineturn.core.commonF import to_tensor
 from nineturn.automl.model_assembler import assembler
@@ -32,10 +32,10 @@ if __name__ == '__main__':
     output_dim = 10
     activation_f = tf.nn.relu
     encoders = ['gcn', 'sgcn', 'gat', 'sage']
-    decoders = ['sa', 'ptsa', 'tsa']
-    epochs = 4
+    decoders = ['sa', 'ptsa', 'tsa', 'conv1d']
+    epochs = 10
     for g in range(1):
-        for r in range(2,3):
+        for r in range(3,4):
             #set up logger
             this_logger = logging.getLogger('citation_predictoin_pipeline')
             this_logger.setLevel(logging.INFO)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                 this_logger.removeHandler(hdlr)
             this_logger.addHandler(fh)
             this_logger.info("--------------------------------------------------------")
-            for trial in range(1):
+            for trial in range(10):
                 this_logger.info("--------------------------------------------------------")
                 this_logger.info(f"start trial {trial}")
                 if g == 0:
@@ -62,11 +62,13 @@ if __name__ == '__main__':
                 output_decoder = MLP(output_dim, [hidden_dim,20,10,5])
                 
                 if r == 0:
-                    sa = SelfAttention( 3, hidden_dim, [8,16,8], n_nodes, 7, output_decoder)
+                    sa = SelfAttention( 3, hidden_dim, [8,16,output_dim], n_nodes, 7, output_decoder)
                 elif r == 1:
-                    sa = PTSA( 3, hidden_dim, [8,16,8], n_nodes, 7, output_decoder)
+                    sa = PTSA( 3, hidden_dim, [8,16,output_dim], n_nodes, 7, output_decoder)
                 elif r == 2:
-                    sa = FTSA( 3, hidden_dim, [8,16,8], n_nodes, 7,3,'concate', output_decoder)
+                    sa = FTSA( 3, hidden_dim, [output_dim], n_nodes, 7,3,'sum', output_decoder)
+                elif r == 3:
+                    sa = Conv1D(hidden_dim, [8,16,output_dim], n_nodes, 7, output_decoder)
                 else:
                     pass
 
@@ -132,7 +134,7 @@ if __name__ == '__main__':
 
     gnn = GCN(num_GNN_layers, in_dim, hidden_dim,  activation=activation_f, allow_zero_in_degree=True, dropout=0.2)
     output_decoder = MLP(output_dim, [hidden_dim,20,10,5])
-    decoder = FTSA( 3, hidden_dim, [8,16,8], n_nodes, 7,3,'concate', output_decoder)
+    decoder = FTSA( 3, hidden_dim, [8], n_nodes, 7,3,'sum', output_decoder)
     new_model = assembler(gnn, decoder)
     new_snapshot = this_graph.dispatcher(n_snapshot-2)
     next_snapshot = this_graph.dispatcher(n_snapshot-1)
