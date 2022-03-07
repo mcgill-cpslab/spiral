@@ -17,7 +17,6 @@
 from abc import abstractmethod
 from typing import List, Tuple
 
-import tensorflow as tf
 from tensorflow.keras import layers
 
 from nineturn.core.types import MLBaseModel, Tensor, nt_layers_list

@@ -14,25 +14,21 @@
 # ==============================================================================
 """Tensorflow based conv1d layer."""
 
-from typing import List, Tuple, Union
-
-import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
 from tensorflow.keras.layers import Conv1D, Layer
 
-from nineturn.core.commonF import to_tensor
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel
-
 
 class Conv1d(Layer):
-    """1-D convolutional layer for decoder"""
+    """1-D convolutional layer for decoder."""
 
     def __init__(self, input_dim: int, out_dim: int, window_size: int, **kwargs):
         """Create a tsa layer.
+
         Args:
-             in_dim:  int, input_dimension
+             input_dim:  int, input_dimension
              out_dim: int, output_dimension
+             window_size: time dimension of the input sequence
         """
         super().__init__(name='Conv1dLayer')
         self.input_dim = input_dim
@@ -41,6 +37,15 @@ class Conv1d(Layer):
         self.base_model = [Conv1D(out_dim, window_size, **kwargs) for i in range(window_size)]
 
     def call(self, input_window: Tensor) -> Tensor:
+        """Forward function.
+
+        Args:
+            input_window: Tensor, a tensor with the last dimension to be feature,
+                          second last to be timestamp.
+
+        Return:
+            a tensor with the same dimension
+        """
         slides = [self.base_model[i](input_window) for i in range(self.window_size)]
         result = tf.concat(slides, -2)
         return result

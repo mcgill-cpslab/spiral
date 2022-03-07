@@ -13,17 +13,12 @@
 # limitations under the License.
 # ==============================================================================
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
-import copy
-from abc import abstractmethod
-from datetime import datetime
-from typing import List, Tuple, Union
-
+from typing import List, Tuple
 import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
 from tensorflow.keras.layers import RNN as TfRnn
-from tensorflow.keras.layers import GRUCell, LSTMCell, MultiHeadAttention, SimpleRNNCell
-
+from tensorflow.keras.layers import GRUCell, LSTMCell, SimpleRNNCell
 from nineturn.core.commonF import to_tensor
 from nineturn.core.layers import TSA, Conv1d, Time2Vec
 from nineturn.core.types import nt_layers_list
@@ -49,7 +44,7 @@ class NodeMemory:
 
     def reset_state(self):
         """Reset the memory to a random tensor."""
-        self.memory = np.random.rand(self.n_nodes, self.n_layers, self.hidden_d)
+        self.memory = np.zeros((self.n_nodes, self.n_layers, self.hidden_d))
 
     def update_memory(self, new_memory, inx):
         """Update memory [N,L,D]."""

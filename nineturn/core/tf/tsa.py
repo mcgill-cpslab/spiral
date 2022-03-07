@@ -13,18 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 """Tensorflow based temporal self-attention layer."""
-from typing import List, Tuple, Union
 
-import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
-from tensorflow.keras.backend import concatenate, cos, dot, sin
 from tensorflow.keras.layers import Layer, MultiHeadAttention
-
-from nineturn.core.commonF import to_tensor
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel
-
-periodic_functions = {'sin': sin, 'cos': cos}
 
 
 class TSA(Layer):
@@ -32,6 +24,7 @@ class TSA(Layer):
 
     def __init__(self, out_dim: int, num_heads: int, score: str = 'dot_product', **kwargs):
         """Create a tsa layer.
+
         Args:
              in_dim:  int, input_dimension
              out_dim: int, output_dimension
@@ -44,7 +37,7 @@ class TSA(Layer):
         self.base_model = MultiHeadAttention(num_heads=num_heads, key_dim=out_dim, **kwargs)
 
     def build(self, input_shape):
-
+        """Initiate weights."""
         self.wq = self.add_weight(shape=(input_shape[-1], self.out_dim), initializer='uniform', trainable=True)
 
         self.wk = self.add_weight(shape=(input_shape[-1], self.out_dim), initializer='uniform', trainable=True)
@@ -52,10 +45,13 @@ class TSA(Layer):
         self.wv = self.add_weight(shape=(input_shape[-1], self.out_dim), initializer='uniform', trainable=True)
         super().build(input_shape)
 
-    def call(self, query, key, value=None):
+    def call(self, query: Tensor, key: Tensor, value=None) -> Tensor:
         """Forward function.
+
         Args:
-            inputs: A Tensor with shape (num_nodes, window_size, feature_size)
+            query: A Tensor with shape (num_nodes, window_size, feature_size)
+            key: The keys to align with query. Usually is the same as the input query in self-attention
+            value: usually the same as key. Default to key
 
         Return:
             new_sequence with shape (num_nodes, window_size, out_dim)
@@ -68,4 +64,5 @@ class TSA(Layer):
         return self.base_model(Q, K, V)
 
     def compute_output_shape(self, input_shape):
+        """Compute the output shape."""
         return (input_shape[0], input_shape[1], self.out_dim)

@@ -13,16 +13,10 @@
 # limitations under the License.
 # ==============================================================================
 """Tensorflow based time2vec encoding."""
-from typing import List, Tuple, Union
-
-import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
-from tensorflow.keras.backend import concatenate, cos, dot, sin
+from tensorflow.keras.backend import cos, sin
 from tensorflow.keras.layers import Layer
-
-from nineturn.core.commonF import to_tensor
-from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel
 
 periodic_functions = {'sin': sin, 'cos': cos}
 
@@ -32,8 +26,10 @@ class Time2Vec(Layer):
 
     def __init__(self, kernel_size: int, feature_size: int, activation: str = 'sin'):
         """Create a time2vec layer.
+
         Args:
              kernel_size:  int, the length of time vector representation.
+             feature_size: int, the number of input features
              activation: str, the periodic activation,one of 'sin' or 'cos'.
         """
         super().__init__(name='Time2VecLayer_' + activation.upper())
@@ -43,6 +39,7 @@ class Time2Vec(Layer):
         self.activation = periodic_functions[activation]
 
     def build(self, input_shape):
+        """Build function to initiate weights."""
         # While i = 0, linear projection
         self.wb = self.add_weight(shape=(1, self.feature_size), initializer='uniform', trainable=True)
 
@@ -59,13 +56,15 @@ class Time2Vec(Layer):
 
         super().build(input_shape)
 
-    def call(self, inputs):
+    def call(self, inputs: Tensor) -> Tensor:
         """Forward function.
+
         Args:
             inputs: A Tensor with shape (batch_size, window_size)
 
         Return:
-            time2vec encoding of the input time dimension with shape (batch_size, feature_size, length of time vector representation + 1)
+            time2vec encoding of the input time dimension with shape
+                (batch_size, feature_size, length of time vector representation + 1)
         """
         inputs = tf.reshape(inputs, [inputs.shape[0], inputs.shape[1], 1])
         bias = tf.reshape(
@@ -79,4 +78,5 @@ class Time2Vec(Layer):
         return tf.concat([bias, wgts], 3)
 
     def compute_output_shape(self, input_shape):
+        """Compute the output shape."""
         return (input_shape[0][0], input_shape[1], self.kernel_size, self.feature_size)
