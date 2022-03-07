@@ -23,8 +23,8 @@ def test_snapshot_torch():
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    from nineturn.dtdg.types import Snapshot
     import dgl
+    from nineturn.dtdg.types import Snapshot
 
     src_ids = torch.tensor([2, 3, 4])
     dst_ids = torch.tensor([1, 2, 3])
@@ -42,7 +42,6 @@ def test_citation_graph_torch():
 
     set_backend(PYTORCH)
     from nineturn.dtdg.types import CitationGraph
-    import dgl
 
     this_graph = CitationGraph(edges, nodes, times)
     assert len(this_graph) == len(times)
@@ -64,8 +63,8 @@ def test_snapshot_tf():
     from nineturn.core.backends import TENSORFLOW, PYTORCH
 
     set_backend(TENSORFLOW)
-    from nineturn.dtdg.types import Snapshot
     import dgl
+    from nineturn.dtdg.types import Snapshot
 
     src_ids = tf.constant([2, 3, 4], dtype=tf.int32)
     dst_ids = tf.constant([1, 2, 3], dtype=tf.int32)
