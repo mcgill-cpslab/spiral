@@ -31,10 +31,7 @@ def test_snapshot_torch():
     g = dgl.graph((src_ids, dst_ids))
     sn = Snapshot(g, 1)
     logger.info(f"sn in in {sn.device}")
-    if torch.cuda.is_available():
-        dev = "cuda:0"
-    else:
-        dev = "cpu"
+    dev = "cpu"
     n_sn = sn.to(dev)
     assert n_sn.observation.device == torch.device(dev)
 

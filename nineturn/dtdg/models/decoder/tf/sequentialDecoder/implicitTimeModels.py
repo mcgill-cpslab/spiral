@@ -14,11 +14,13 @@
 # ==============================================================================
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
 from typing import List, Tuple
+
 import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
 from tensorflow.keras.layers import RNN as TfRnn
 from tensorflow.keras.layers import GRUCell, LSTMCell, SimpleRNNCell
+
 from nineturn.core.commonF import to_tensor
 from nineturn.core.layers import TSA, Conv1d, Time2Vec
 from nineturn.core.types import nt_layers_list
