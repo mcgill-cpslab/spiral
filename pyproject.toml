@@ -50,7 +50,7 @@ bump2version = {version = "^1.0.1", optional = true}
 dgl = {version = ">=0.6, <= 0.8", optional = true}
 py7zr = {version = "^0.17", optional = true}
 torch = {version="1.10.2", optional=true}
-tensorflow = {version=">=2.7, <=2.8",optional=true}
+tensorflow = {version=">=2.7.1, <=2.8",optional=true}
 ogb = "^1.3.2"
 
 [tool.poetry.extras]
