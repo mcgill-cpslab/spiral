@@ -48,11 +48,11 @@ class NodeMemory:
         """Reset the memory to a random tensor."""
         self.memory = np.zeros((self.n_nodes, self.n_layers, self.hidden_d))
 
-    def update_memory(self, new_memory, inx):
+    def update_memory(self, new_memory: Tensor, inx: List[int]):
         """Update memory [N,L,D]."""
         self.memory[inx] = new_memory.numpy()
 
-    def get_memory(self, inx):
+    def get_memory(self, inx: List[int]) -> np.ndarray:
         """Retrieve node memory by index.Return shape [L,N,D]."""
         selected = self.memory[inx]
         result = np.einsum('lij->ilj', selected)
@@ -68,8 +68,8 @@ class RnnFamily(BaseModel):
         Args:
             hidden_d: int, the hidden state's dimension.
             n_nodes: int, number of nodes to remember.
+            n_layers: int, number of RNN layers.
             simple_decoder: SimpleDecoder, the outputing simple decoder.
-            device: str or torch.device, the device this model will run. mainly for node memory.
         """
         super().__init__(hidden_d, simple_decoder)
         self.n_nodes = n_nodes
@@ -80,16 +80,33 @@ class RnnFamily(BaseModel):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
 
-    def get_weights(self):
+    def get_weights(self) -> List[np.ndarray]:
+        """Get model weights.
+
+        Return:
+            a list of model weights
+        """
         return [self.base_model.get_weights(), self.simple_decoder.get_weights(), self.memory_h.memory]
 
-    def set_weights(self, weights):
+    def set_weights(self, weights: List[np.ndarray]):
+        """Set weights for the model.
+
+        Args:
+            weights: List[np.ndarray], value for new weights.
+        """
         self.base_model.set_weights(weights[0])
         self.simple_decoder.set_weights(weights[1])
         self.memory_h.memory = weights[2]
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
-        """Forward function."""
+    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
+        """Forward function.
+
+        Args:
+            in_state: the input from encoder.
+
+        Return:
+            the prediction
+        """
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
         # the sequential model processes each node at each step
@@ -127,7 +144,6 @@ class LSTM(RnnFamily):
             n_nodes: int, number of nodes.
             n_layers: int, number of lstm layers.
             simple_decoder: an instance of SimpleDecoder.
-            memory_on_cpu: bool, always put node memory to cpu.
         """
         super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
@@ -140,11 +156,17 @@ class LSTM(RnnFamily):
         self.memory_c = NodeMemory(n_nodes, hidden_d, n_layers)
 
     def get_weights(self):
+        """Get model weights."""
         weights = super().get_weights()
         weights.append(self.memory_c.memory)
         return weights
 
     def set_weights(self, weights):
+        """Set weights for the model.
+
+        Args:
+            weights: List[np.ndarray], value for new weights.
+        """
         super().set_weights(weights)
         self.memory_c.memory = weights[3]
 
@@ -153,7 +175,7 @@ class LSTM(RnnFamily):
         self.memory_h.reset_state()
         self.memory_c.reset_state()
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -237,6 +259,8 @@ class RNN(RnnFamily):
 
 
 class SelfAttention(SlidingWindowFamily):
+    """Temporal self-attention (SA) decoder."""
+
     def __init__(
         self,
         num_heads: int,
@@ -251,8 +275,9 @@ class SelfAttention(SlidingWindowFamily):
 
         Args:
             num_heads: int, number of attention heads
-            key_dim: int, dimension of input key
-            hidden_d: int, the hidden state's dimension.
+            input_d: int, number of input feature
+            embed_dims: List[int], list of hidden dimension for each SA layer.
+            n_nodes: int number of nodes in the graph.
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
@@ -261,7 +286,7 @@ class SelfAttention(SlidingWindowFamily):
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -284,6 +309,8 @@ class SelfAttention(SlidingWindowFamily):
 
 
 class PTSA(SlidingWindowFamily):
+    """Positional Temporal self-attention (SA) decoder."""
+
     def __init__(
         self,
         num_heads: int,
@@ -298,8 +325,9 @@ class PTSA(SlidingWindowFamily):
 
         Args:
             num_heads: int, number of attention heads
-            input_d: int, dimension of inputs
-            embed_dims: List[int], the hidden states of each TSA layer in the model.
+            input_d: int, number of input feature
+            embed_dims: List[int], list of hidden dimension for each SA layer.
+            n_nodes: int number of nodes in the graph.
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
@@ -309,7 +337,7 @@ class PTSA(SlidingWindowFamily):
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
         self.positional_embedding = tf.Variable(tf.random.uniform([window_size, input_d], dtype=tf.float32))
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -343,7 +371,8 @@ def FTSA(
     time_agg: str,
     simple_decoder: SimpleDecoder,
     **kwargs,
-):
+) -> SlidingWindowFamily:
+    """Factory function to return the corresponding FTSA decoder."""
     model = None
     if time_agg == 'concate':
         model = FTSAConcate(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
@@ -353,6 +382,8 @@ def FTSA(
 
 
 class FTSAConcate(SlidingWindowFamily):
+    """Functional Temporal self-attention (SA) decoder with concatenate as time encoding aggregation method."""
+
     def __init__(
         self,
         num_heads: int,
@@ -368,8 +399,9 @@ class FTSAConcate(SlidingWindowFamily):
 
         Args:
             num_heads: int, number of attention heads
-            key_dim: int, dimension of input key
-            hidden_d: int, the hidden state's dimension.
+            input_d: int, number of input feature
+            embed_dims: List[int], list of hidden dimension for each SA layer.
+            n_nodes: int number of nodes in the graph.
             window_size: int, the length of the sliding window
             time_kernel: int, kernel size of the time2vec embedding
             simple_decoder: SimpleDecoder, the outputing simple decoder.
@@ -384,12 +416,13 @@ class FTSAConcate(SlidingWindowFamily):
         self.input_d = input_d
 
     def build(self, input_shape):
+        """Initiate model weigths."""
         self.wt = self.add_weight(
             shape=(self.input_d + self.time_kernel, self.input_d), initializer='uniform', trainable=True
         )
         super().build(input_shape)
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -416,6 +449,8 @@ class FTSAConcate(SlidingWindowFamily):
 
 
 class FTSASum(SlidingWindowFamily):
+    """Functional Temporal self-attention (SA) decoder with summation as time encoding aggregation method."""
+
     def __init__(
         self,
         num_heads: int,
@@ -431,8 +466,9 @@ class FTSASum(SlidingWindowFamily):
 
         Args:
             num_heads: int, number of attention heads
-            key_dim: int, dimension of input key
-            hidden_d: int, the hidden state's dimension.
+            input_d: int, number of input feature
+            embed_dims: List[int], list of hidden dimension for each SA layer.
+            n_nodes: int number of nodes in the graph.
             window_size: int, the length of the sliding window
             time_kernel: int, kernel size of the time2vec embedding
             simple_decoder: SimpleDecoder, the outputing simple decoder.
@@ -447,10 +483,10 @@ class FTSASum(SlidingWindowFamily):
         self.feature_size = input_d
 
     def build(self, input_shape):
-        print(self.time_kernel)
+        """Initiate model weights."""
         self.wk = self.add_weight(shape=(self.time_kernel, 1), initializer='uniform', trainable=True)
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -483,6 +519,8 @@ class FTSASum(SlidingWindowFamily):
 
 
 class Conv1D(SlidingWindowFamily):
+    """1-D convolutional network decoder."""
+
     def __init__(
         self,
         input_d: int,
@@ -496,8 +534,9 @@ class Conv1D(SlidingWindowFamily):
 
         Args:
             num_heads: int, number of attention heads
-            key_dim: int, dimension of input key
-            hidden_d: int, the hidden state's dimension.
+            input_d: int, number of input feature
+            embed_dims: List[int], list of hidden dimension for each SA layer.
+            n_nodes: int number of nodes in the graph.
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
@@ -507,7 +546,7 @@ class Conv1D(SlidingWindowFamily):
         for i in range(1, len(embed_dims)):
             self.nn_layers.append(Conv1d(embed_dims[i - 1], embed_dims[i], window_size, **kwargs))
 
-    def call(self, in_state: Tuple[Tensor, List[int]]):
+    def call(self, in_state: Tuple[Tensor, Tensor]):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1

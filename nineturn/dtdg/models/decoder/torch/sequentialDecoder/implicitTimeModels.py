@@ -1,3 +1,4 @@
+# ============================================================================
 # Copyright 2022 The Nine Turn Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -12,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
+# mypy: ignore-errors
 """Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
 
 import copy
@@ -43,11 +45,11 @@ class NodeMemory:
         """Reset the memory to a random tensor."""
         self.memory = torch.randn(self.n_layers, self.n_nodes, self.hidden_d)
 
-    def update_memory(self, new_memory, inx):
+    def update_memory(self, new_memory: torch.Tensor, inx: List[int]):
         """Update memory."""
         self.memory[:, inx, :] = new_memory
 
-    def get_memory(self, inx):
+    def get_memory(self, inx: List[int]) -> torch.Tensor:
         """Retrieve node memory by index."""
         return self.memory[:, inx, :]
 
@@ -92,10 +94,10 @@ class SequentialDecoder(nn.Module):
         self.n_nodes = n_nodes
         self.hidden_d = hidden_d
         self.mini_batch = False
-        self.base_model = None
         self.simple_decoder = simple_decoder
         self.memory_h = NodeMemory(n_nodes, hidden_d, n_layers)
         self.training_mode = True
+        self.base_model = None
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Set to batch training mode."""

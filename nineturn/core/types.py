@@ -21,14 +21,6 @@ from nineturn.core.utils import _get_backend
 
 this_backend = _get_backend()
 
-
-def nt_layers_list():
-    if this_backend == TENSORFLOW:
-        return []
-    else:
-        return
-
-
 if this_backend == TENSORFLOW:
     from dgl.nn.tensorflow.conv import GATConv, GraphConv, SAGEConv, SGConv
     from tensorflow import Tensor

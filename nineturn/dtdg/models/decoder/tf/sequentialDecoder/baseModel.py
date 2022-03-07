@@ -13,6 +13,7 @@
 # limitations under the License.
 # ==============================================================================
 """Tensorflow based sequential decoder. Designed specially for dynamic graph learning."""
+from typing import List
 
 import numpy as np
 from tensorflow.keras import layers
@@ -38,9 +39,11 @@ class BaseModel(layers.Layer):
         self.training_mode = True
 
     def training(self):
+        """Set training mode to be true."""
         self.training_mode = True
 
     def eval_mode(self):
+        """Set training mode to false."""
         self.training_mode = False
 
     def set_mini_batch(self, mini_batch: bool = True):
@@ -56,8 +59,8 @@ class SlidingWindow:
 
         Args:
             n_nodes: int, number of nodes to remember.
-            hidden_d: int, the hidden state's dimension.
-            n_layers: int, number of targeting rnn layers.
+            input_d: int, the number of input features..
+            window_size: int, number of snapshots in the sliding window..
         """
         self.n_nodes = n_nodes
         self.window_size = window_size
@@ -68,16 +71,22 @@ class SlidingWindow:
         """Reset the memory to a random tensor."""
         self.memory = np.zeros((self.n_nodes, self.window_size, self.input_d))
 
-    def update_window(self, new_window, inx):
-        """Update memory with input memory [N,D].
+    def update_window(self, new_window: np.ndarray, inx: List[int]):
+        """Update memory with input window.
+
         Args:
             new_window: numpy array,
+            inx: the node for which  to update memory.
         """
         self.memory[inx, :-1, :] = self.memory[inx, 1:, :]
         self.memory[inx, -1, :] = new_window
 
-    def get_memory(self, inx):
-        """Retrieve node memory by index.Return shape [N,W,D]."""
+    def get_memory(self, inx: List[int]) -> np.ndarray:
+        """Retrieve node memory by index.
+
+        Args:
+            inx: the nodes to retrieve the memory
+        """
         return self.memory[inx]
 
 
@@ -89,6 +98,7 @@ class SlidingWindowFamily(BaseModel):
 
         Args:
             input_d: int, the hidden state's dimension.
+            n_nodes: int, total number of nodes.
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
