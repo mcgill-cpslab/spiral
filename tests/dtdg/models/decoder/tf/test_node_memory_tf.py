@@ -18,13 +18,11 @@ def test_node_memory_tf():
     hidden_d = 2
     n_layers = 3
     this_memory = NodeMemory(n_nodes, hidden_d, n_layers)
-    old_memory = this_memory.memory.copy()
-    this_memory.reset_state()
-
-    assert not np.all(tf.equal(old_memory, this_memory.memory))
     nodes_to_change = [2,3]
     new_memory = tf.convert_to_tensor(np.random.randn(2, n_layers, hidden_d))
     this_memory.update_memory(new_memory, nodes_to_change)
     new_memory = tf.convert_to_tensor(np.random.randn(n_layers, 2, hidden_d))
     assert not np.all(tf.equal(this_memory.get_memory(nodes_to_change), new_memory))
-
+    old_memory = this_memory.memory.copy()
+    this_memory.reset_state()
+    assert not np.all(tf.equal(old_memory, this_memory.memory))
