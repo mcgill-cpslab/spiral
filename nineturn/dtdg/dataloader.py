@@ -84,6 +84,7 @@ def _ogb_nodedata_loader(name: str) -> Dict:
 OGB_DATASETS = {
     'ogbl-citation2': (_ogb_linkdata_loader, preprocess_citation_graph, 'node_year'),
     'ogbn-arxiv': (_ogb_nodedata_loader, preprocess_citation_graph, 'node_year'),
+    'ogbn-papers100M': (_ogb_nodedata_loader, preprocess_citation_graph, 'node_year'),
 }
 # A dict with dataset name as key, the tuple of preporcess method and time feature name as value
 
