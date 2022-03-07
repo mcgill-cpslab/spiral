@@ -23,14 +23,13 @@ def test_snapshot_torch():
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    from nineturn.dtdg.types import Snapshot, CitationGraph
+    from nineturn.dtdg.types import Snapshot
     import dgl
 
     src_ids = torch.tensor([2, 3, 4])
     dst_ids = torch.tensor([1, 2, 3])
     g = dgl.graph((src_ids, dst_ids))
     sn = Snapshot(g, 1)
-    logger.info(f"sn in in {sn.device}")
     dev = "cpu"
     n_sn = sn.to(dev)
     assert n_sn.observation.device == torch.device(dev)
@@ -43,7 +42,7 @@ def test_citation_graph_torch():
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    from nineturn.dtdg.types import Snapshot, CitationGraph
+    from nineturn.dtdg.types import CitationGraph
     import dgl
 
     this_graph = CitationGraph(edges, nodes, times)
