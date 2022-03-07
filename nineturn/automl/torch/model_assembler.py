@@ -17,12 +17,21 @@ from torch.nn import Module
 
 
 class Assembler(Module):
+    """Assembler combines encoder and decoder to create a dynamic graph learner."""
+
     def __init__(self, encoder, decoder):
+        """Initialize the assembler.
+
+        Args:
+            encoder: graph encoder
+            decoder: graph decoder
+        """
         super().__init__()
         self.encoder = encoder
         self.decoder = decoder
 
     def forward(self, input_state):
+        """Forward function."""
         h = self.encoder(input_state)
         h = self.decoder(h)
         return h

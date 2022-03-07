@@ -266,7 +266,6 @@ class RNN(SequentialDecoder):
         n_nodes: int,
         n_layers: int,
         simple_decoder: SimpleDecoder,
-        memory_on_cpu: bool = False,
         **kwargs,
     ):
         """Create a LSTM sequential decoder.
@@ -278,7 +277,7 @@ class RNN(SequentialDecoder):
             n_layers: int, number of GRU layers.
             simple_decoder: an instance of SimpleDecoder.
         """
-        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder, memory_on_cpu)
+        super().__init__(hidden_d, n_nodes, n_layers, simple_decoder)
         self.input_d = input_d
         self.base_model = nn.RNN(
             input_size=input_d, hidden_size=hidden_d, batch_first=True, num_layers=n_layers, **kwargs
