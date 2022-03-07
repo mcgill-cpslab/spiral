@@ -35,6 +35,6 @@ def test_reshape_tensor():
     set_backend(TENSORFLOW)
     from nineturn.core.tf_functions import reshape_tensor
 
-    shape = -1
-
-    assert np.all(tf.equal(reshape_tensor(arr1, shape), tf.reshape(arr1, shape)))
+    shape = [2, 6]
+    new_tensor =  reshape_tensor(arr1, shape)
+    assert new_tensor.shape == shape
