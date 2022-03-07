@@ -1589,7 +1589,7 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "49fa61816449aaf19ee116cba48f019a7b8c869ec71d745d1101da24977435a3"
+content-hash = "dd61733675f6b3a3a93c08bdc26ebb85d9bd9f8064e81b7b7e073c7768ee017a"
 
 [metadata.files]
 absl-py = [
