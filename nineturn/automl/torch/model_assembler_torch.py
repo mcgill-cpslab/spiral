@@ -12,31 +12,26 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tensorflow specific common functions."""
-from typing import List
-
-import tensorflow as tf
-from numpy import ndarray
+"""Model assembler for pytorch."""
+from torch.nn import Module
 
 
-def _to_tensor(arr: ndarray) -> tf.Tensor:
-    """Convert a numpy array to tensorflow tensor."""
-    return tf.constant(arr)
+class Assembler(Module):
+    """Assembler combines encoder and decoder to create a dynamic graph learner."""
 
+    def __init__(self, encoder, decoder):
+        """Initialize the assembler.
 
-def nt_layers_list() -> List:
-    """Create a list to store layers."""
-    return []
+        Args:
+            encoder: graph encoder
+            decoder: graph decoder
+        """
+        super().__init__()
+        self.encoder = encoder
+        self.decoder = decoder
 
-
-def reshape_tensor(h: tf.Tensor, new_shape: List[int]) -> tf.Tensor:
-    """Reshape input tensor to new_shape.
-
-    Args:
-        h: Tensor to reshape
-        new_shape: the new shape after reshape
-
-    Return:
-        new Tensor with new_shape
-    """
-    return tf.reshape(h, new_shape)
+    def forward(self, input_state):
+        """Forward function."""
+        h = self.encoder(input_state)
+        h = self.decoder(h)
+        return h

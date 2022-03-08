@@ -23,21 +23,16 @@ def test_snapshot_torch():
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    from nineturn.dtdg.types import Snapshot, CitationGraph
     import dgl
+    from nineturn.dtdg.types import Snapshot
 
     src_ids = torch.tensor([2, 3, 4])
     dst_ids = torch.tensor([1, 2, 3])
     g = dgl.graph((src_ids, dst_ids))
     sn = Snapshot(g, 1)
-    logger.info(f"sn in in {sn.device}")
-    if torch.cuda.is_available():
-        dev = "cuda:0"
-    else:
-        dev = "cpu"
+    dev = "cpu"
     n_sn = sn.to(dev)
     assert n_sn.observation.device == torch.device(dev)
-
 
 def test_citation_graph_torch():
     """Test that citation graph could support different backend."""
@@ -46,8 +41,7 @@ def test_citation_graph_torch():
     from nineturn.core.backends import PYTORCH
 
     set_backend(PYTORCH)
-    from nineturn.dtdg.types import Snapshot, CitationGraph
-    import dgl
+    from nineturn.dtdg.types import CitationGraph
 
     this_graph = CitationGraph(edges, nodes, times)
     assert len(this_graph) == len(times)
@@ -69,8 +63,8 @@ def test_snapshot_tf():
     from nineturn.core.backends import TENSORFLOW, PYTORCH
 
     set_backend(TENSORFLOW)
-    from nineturn.dtdg.types import Snapshot
     import dgl
+    from nineturn.dtdg.types import Snapshot
 
     src_ids = tf.constant([2, 3, 4], dtype=tf.int32)
     dst_ids = tf.constant([1, 2, 3], dtype=tf.int32)

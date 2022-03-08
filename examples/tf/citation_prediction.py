@@ -33,9 +33,9 @@ if __name__ == '__main__':
     activation_f = tf.nn.relu
     encoders = ['gcn', 'sgcn', 'gat', 'sage']
     decoders = ['lstm', 'gru', 'rnn']
-    epochs = 2000
-    for g in range(1,4):
-        for r in range(1,3):
+    epochs = 2
+    for g in range(4):
+        for r in range(3):
             #set up logger
             this_logger = logging.getLogger('citation_predictoin_pipeline')
             this_logger.setLevel(logging.INFO)
@@ -47,7 +47,7 @@ if __name__ == '__main__':
                 this_logger.removeHandler(hdlr)
             this_logger.addHandler(fh)
             this_logger.info("--------------------------------------------------------")
-            for trial in range(5):
+            for trial in range(1):
                 this_logger.info("--------------------------------------------------------")
                 this_logger.info(f"start trial {trial}")
                 if g == 0:

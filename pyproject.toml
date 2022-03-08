@@ -23,11 +23,10 @@ packages = [
     { include = "tests", format = "sdist" },
 ]
 
+
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
 click = "8.0.1"
-dgl = "0.6.1"
-
 black  = { version = "^21.5b2", optional = true}
 isort  = { version = "^5.8.0", optional = true}
 flake8  = { version = "^3.9.2", optional = true}
@@ -48,9 +47,11 @@ mkdocs-autorefs = {version = "^0.2.1", optional = true}
 pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
-torch = "1.10.2"
-tensorflow = "^2.7.0"
-ogb = "1.3.2"
+dgl = {version = ">=0.6, <= 0.8", optional = true}
+py7zr = {version = "^0.17", optional = true}
+torch = {version="1.10.2", optional=true}
+tensorflow = {version=">=2.7.1, <=2.8",optional=true}
+ogb = "^1.3.2"
 
 [tool.poetry.extras]
 test = [
@@ -63,7 +64,7 @@ test = [
     "pytest-cov",
     ]
 
-dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version"]
+dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version","py7zr", "torch", "tensorflow"]
 
 doc = [
     "mkdocs",

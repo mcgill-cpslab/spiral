@@ -22,9 +22,9 @@ from nineturn.core.utils import _get_backend
 this_backend = _get_backend()
 
 if this_backend == TENSORFLOW:
-    from nineturn.automl.tf.model_assembler import Assembler as Assembler
+    from nineturn.automl.tf.model_assembler_tf import Assembler as Assembler
 elif this_backend == PYTORCH:
-    from nineturn.automl.torch.model_assembler import Assembler as Assembler
+    from nineturn.automl.torch.model_assembler_torch import Assembler as Assembler
 else:
     raise BackendNotSupportedError("Backend %s not supported." % (this_backend))
 

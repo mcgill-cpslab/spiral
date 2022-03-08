@@ -111,3 +111,6 @@ ENV/
 
 # mkdocs build dir
 site/
+
+# experiments
+experiments/*
