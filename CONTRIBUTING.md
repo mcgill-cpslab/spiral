@@ -97,12 +97,12 @@ Ready to contribute? Here's how to set up `nineturn` for local development.
     $ poetry run tox
     ```
 
-7. Commit your changes and push your branch to GitHub:
+7. Commit your changes and push your branch to GitHub(git add . not recomended becaue it adds every file that has been changed, on purpose and by accident. ex.: windows swp files):
 
     ```
-    $ git add .
+    $ git add <file-changed>
     $ git commit -m "Your detailed description of your changes."
-    $ git push origin name-of-your-branch
+    $ git push origin <name-of-your-branch>
     ```
 
 8. Submit a pull request through the GitHub website.
