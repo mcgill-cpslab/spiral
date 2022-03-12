@@ -116,7 +116,7 @@ class RnnFamily(BaseModel):
         self.simple_decoder.set_weights(weights[1])
         self.memory_h.memory = weights[2]
 
-    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
+    def call(self, in_state: Tuple[Tensor, Tensor], training=False) -> Tensor:
         """Forward function.
 
         Args:
@@ -134,11 +134,11 @@ class RnnFamily(BaseModel):
         node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
-        out_result = self.base_model(out_sequential, initial_state=h)
+        out_result = self.base_model(out_sequential, initial_state=h, training=training)
         out_sequential = out_result[0]
         new_h = out_result[1:]
         self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id))
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id),training=training)
         return out
 
 
@@ -193,7 +193,7 @@ class LSTM(RnnFamily):
         self.memory_h.reset_state()
         self.memory_c.reset_state()
 
-    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
+    def call(self, in_state: Tuple[Tensor, Tensor], training=False) -> Tensor:
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -206,14 +206,14 @@ class LSTM(RnnFamily):
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
         hc = [(h[i], c[i]) for i in range(self.n_layers)]
-        out_result = self.base_model(out_sequential, initial_state=hc)
+        out_result = self.base_model(out_sequential, initial_state=hc,training=training)
         out_sequential = out_result[0]
         new_hc = out_result[1:]
         new_h = [i[0] for i in new_hc]
         new_c = [i[1] for i in new_hc]
         self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
         self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id))
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id),training=training)
         return out
 
 
@@ -304,7 +304,7 @@ class SelfAttention(SlidingWindowFamily):
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
 
-    def call(self, in_state: Tuple[Tensor, Tensor]) -> Tensor:
+    def call(self, in_state: Tuple[Tensor, Tensor],training=False) -> Tensor:
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -322,7 +322,7 @@ class SelfAttention(SlidingWindowFamily):
             new_current = layer(current, current)
             current = tf.identity(new_current)
         last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids_id))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids_id), training=training)
         return out
 
 

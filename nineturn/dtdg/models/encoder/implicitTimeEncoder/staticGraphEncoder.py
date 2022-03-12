@@ -60,7 +60,7 @@ class StaticGraphEncoder(MLBaseModel):
         self.mini_batch = False
 
     @abstractmethod
-    def forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """All StaticGraphEncoder subclass should have a forward function.
 
         Args:
@@ -72,7 +72,7 @@ class StaticGraphEncoder(MLBaseModel):
         """
         pass
 
-    def call(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def call(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """All StaticGraphEncoder subclass should have a forward function.
 
         Args:
@@ -82,7 +82,7 @@ class StaticGraphEncoder(MLBaseModel):
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
-        return self.forward(in_sample)
+        return self.forward(in_sample, training)
 
     def set_mini_batch(self, mini_batch: bool = True):
         """Turn on batch training mode.
@@ -119,7 +119,7 @@ class GCN(StaticGraphEncoder):
         # output layer
         self.dropout = Dropout(dropout)
 
-    def single_graph_forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def single_graph_forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
         """Forward function in normal mode.
 
         Args:
@@ -130,15 +130,14 @@ class GCN(StaticGraphEncoder):
         """
         snapshot, dst_node_ids = in_sample
         g = snapshot.observation
-        g = add_self_loop(g)
         h = snapshot.node_feature()
         h = self.layers[0](g, h)
         for layer in self.layers[1:]:
-            h = self.dropout(h)
+            h = self.dropout(h,training=training)
             h = layer(g, h)
         return (h, dst_node_ids)
 
-    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List]) -> Tuple[Tensor, List]:
+    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List],training=False) -> Tuple[Tensor, List]:
         """Forward function in batch mode.
 
         Args:
@@ -163,7 +162,7 @@ class GCN(StaticGraphEncoder):
             h = self.layers[i](blocks[i], h)
         return (h, dst_node_ids)
 
-    def forward(self, _input):
+    def forward(self, _input,training=False):
         """Forward function.
 
         It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
@@ -173,7 +172,7 @@ class GCN(StaticGraphEncoder):
         if self.mini_batch:
             return self.mini_batch_forward(_input)
         else:
-            return self.single_graph_forward(_input)
+            return self.single_graph_forward(_input, training=training)
 
 
 class SGCN(StaticGraphEncoder):
@@ -194,7 +193,7 @@ class SGCN(StaticGraphEncoder):
         self.layers.append(SGConv(in_feats, n_hidden, k=n_layers, **kwargs))
 
     # to fulfill sequential.forward it only accepts one input
-    def forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
         """Forward function.
 
         Args:
@@ -236,7 +235,7 @@ class GAT(StaticGraphEncoder):
             # due to multi-head, the in_dim = num_hidden * num_heads
             self.layers.append(GATConv(n_hidden * heads[i - 1], n_hidden, heads[i], **kwargs))
 
-    def single_graph_forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def single_graph_forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
         """Forward function in normal mode.
 
         Args:
@@ -253,7 +252,7 @@ class GAT(StaticGraphEncoder):
             h = reshape_tensor(h, [-1, self.heads[i] * self.n_hidden])
         return (h, dst_node_ids)
 
-    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List]) -> Tuple[Tensor, List]:
+    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List], training=False) -> Tuple[Tensor, List]:
         """Forward function in batch mode.
 
         Args:
@@ -276,7 +275,7 @@ class GAT(StaticGraphEncoder):
             h = self.layers[i](blocks[i], h)
         return (h, dst_node_ids)
 
-    def forward(self, _input):
+    def forward(self, _input,training=False):
         """Forward function.
 
         It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
@@ -284,9 +283,9 @@ class GAT(StaticGraphEncoder):
         """
         _check_mini_batch_mode(self.mini_batch, _input[0])
         if self.mini_batch:
-            return self.mini_batch_forward(_input)
+            return self.mini_batch_forward(_input, training=training)
         else:
-            return self.single_graph_forward(_input)
+            return self.single_graph_forward(_input, training=training)
 
 
 class GraphSage(StaticGraphEncoder):
@@ -297,7 +296,7 @@ class GraphSage(StaticGraphEncoder):
         super().__init__()
         self.layers.append(SAGEConv(in_feat, n_hidden, aggregator, **kwargs))
 
-    def forward(self, in_sample: Tuple[Snapshot, List]) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """Forward function.
 
         Args:

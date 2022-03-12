@@ -46,7 +46,8 @@ def edge_sample(snapshot: Snapshot, target_node:int, num_positive_edges:int, num
         re = ([[target_node, i] for i in pos_sample],[[target_node, i] for i in neg_sample])
     return re
 
-def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int=None, start_t:int=1):
+def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int=None, start_t:int=1,
+        negative_label:int=0):
     times = len(dgraph)
     dgraph.time_data[TARGET] = {}
     dgraph.time_data[LABEL] = {}
@@ -68,5 +69,5 @@ def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int
         dgraph.time_data[TARGET][t] = to_tensor(np.array(edge_target).astype('int64'))
         if len(pos) < 1 or len(neg) < 1:
             raise DimensionError(f"positive and negative sample has {len(pos)} and {len(neg)} edges") 
-        labels = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))))
+        labels = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))+float(negative_label)))
         dgraph.time_data[LABEL][t] = to_tensor(labels)
