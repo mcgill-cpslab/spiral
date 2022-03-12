@@ -14,20 +14,23 @@
 # ==============================================================================
 """Datasets and dataloader for DTDG experiments."""
 
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 from numpy import ndarray
 from ogb.linkproppred import LinkPropPredDataset
 from ogb.nodeproppred import NodePropPredDataset
-
+import dgl
 from nineturn.core.logger import get_logger
-from nineturn.dtdg.types import CitationGraph, DiscreteGraph
+from nineturn.dtdg.types import CitationGraph, DiscreteGraph, Snapshot
 
 logger = get_logger()
 
 EDGES = "edge_index"
 NODES = "node_feat"
+
+SRC = 0
+DST = 1
 
 
 def preprocess_citation_graph(graph_data: Dict[str, ndarray], node_time: str) -> CitationGraph:

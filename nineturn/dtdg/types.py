@@ -18,7 +18,7 @@ This file define the types required for dtdg package
 """
 import copy
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Tuple
 
 import dgl
 import numpy as np
@@ -30,6 +30,8 @@ from nineturn.core import commonF
 from nineturn.core.errors import DimensionError, ValueNotSortedError
 from nineturn.core.logger import get_logger
 from nineturn.core.utils import get_anchor_position, is_sorted
+from nineturn.core.types import Tensor
+
 
 TIME_D = 0  # position of time in nodes and edges table
 SOURCE = 1  # position of source in edges table
@@ -53,10 +55,13 @@ class Snapshot:
     in 'https://snap.stanford.edu/data/',
     """
 
-    def __init__(self, observation: DGLGraph, t: int):
+    def __init__(self, observation: DGLGraph, t: int, node_ids: ndarray=None):
         """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
         self.observation = observation
         self.t = commonF.to_tensor(np.array([t]))
+        self.node_ids = None
+        if node_ids:
+            self.node_ids = commonF.to_tensor(node_ids)
 
     def num_node_features(self) -> int:
         """Return the number of node features."""
@@ -134,7 +139,7 @@ class DiscreteGraph(ABC):
         pass
 
     @abstractmethod
-    def dispatcher(self, t: int) -> Snapshot:
+    def dispatcher(self, t: int) -> Tuple[Snapshot, List]:
         """Return the snapshot observed at the input time index."""
         pass
 
@@ -146,7 +151,7 @@ class VEInvariantDTDG(DiscreteGraph):
     are created in the graph.
     """
 
-    def __init__(self, edges: ndarray, nodes: ndarray, timestamps: ndarray):
+    def __init__(self, edges: ndarray, nodes: ndarray, timestamps: ndarray, node_names:ndarray=None):
         """V-E invariant DTDG is stored as an edge table,a node table an the timestamp index.
 
         Args:
@@ -164,6 +169,7 @@ class VEInvariantDTDG(DiscreteGraph):
         """
         self.edge_dimension = 3
         self.node_dimension = 1
+        self.node_names = node_names
         error_message = """The second dimension of {entity} should be greater than or equal to {value}."""
         not_sorted_error = """The input {entity} should be sorted based on the its time index."""
         if edges.shape[1] < self.edge_dimension:
@@ -186,12 +192,15 @@ class VEInvariantDTDG(DiscreteGraph):
         self.timestamps = timestamps
         self._node_time_anchors = get_anchor_position(nodes[:, TIME_D], range(len(self.timestamps)))
         self._edge_time_anchors = get_anchor_position(edges[:, TIME_D], range(len(self.timestamps)))
+        self.edge_id ={ f"{int(self.edges[i][1])}_{int(self.edges[i][2])}": i for i in range(len(self.edges))}
+        self.time_data = {}
 
-    def dispatcher(self, t: int) -> Snapshot:
+    def dispatcher(self, t: int) -> Tuple[Snapshot, Tensor]:
         """Return a snapshot for the input time index."""
         this_edges = self.edges[: self._edge_time_anchors[t], :]
         this_nodes = self.nodes[: self._node_time_anchors[t], :]
         num_nodes = this_nodes.shape[0]
+        node_ids = np.arange(num_nodes)
         src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
         dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
         observation = dgl.graph((src, dst), num_nodes=num_nodes)
@@ -201,7 +210,7 @@ class VEInvariantDTDG(DiscreteGraph):
         if this_nodes.shape[1] > self.node_dimension:
             observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :].astype(FEATURE_TYPE))
 
-        return Snapshot(observation, t)
+        return (Snapshot(observation, t), commonF.to_tensor(node_ids))
 
     def __len__(self) -> int:
         """Return the number of snapshots in this DTDG."""
@@ -233,23 +242,17 @@ class CitationGraph(VEInvariantDTDG):
         """
         super().__init__(edges, nodes, timestamps)
 
-    def dispatcher(self, t: int, add_self_loop: bool = False) -> Snapshot:
+    def dispatcher(self, t: int, add_self_loop: bool = False) -> Tuple[Snapshot, Tensor]:
         """Return a snapshot for the input time index.
 
         For citation graph, the node feature has previous year's citation as the last node feature.
         """
-        this_edges = self.edges[: self._edge_time_anchors[t], :]
-        this_nodes = self.nodes[: self._node_time_anchors[t], :]
-        src = commonF.to_tensor(this_edges[:, SOURCE].astype(ID_TYPE))
-        dst = commonF.to_tensor(this_edges[:, DESTINATION].astype(ID_TYPE))
-        num_nodes = this_nodes.shape[0]
-        observation = dgl.graph((src, dst), num_nodes=num_nodes)
-        if this_edges.shape[1] > self.edge_dimension:
-            observation.edata[FEAT] = commonF.to_tensor(this_edges[:, self.edge_dimension :])
-
+        current_snapshot, node_ids = super().dispatcher(t)
+        observation = current_snapshot.observation
+        this_nodes = observation.ndata[FEAT].numpy()
         citation = np.zeros(shape=(this_nodes.shape[0], 1))
         if t > 0:
-            previous_snapshot = super().dispatcher(t - 1)
+            previous_snapshot,_ = super().dispatcher(t - 1)
             previous_citation = previous_snapshot.observation.in_degrees().numpy()
             citation[: previous_citation.shape[0], 0] = previous_citation
 
@@ -257,4 +260,4 @@ class CitationGraph(VEInvariantDTDG):
         observation.ndata[FEAT] = commonF.to_tensor(this_nodes[:, self.node_dimension :].astype(FEATURE_TYPE))
         if add_self_loop:
             observation = observation.add_self_loop()
-        return Snapshot(observation, t)
+        return (Snapshot(observation, t), node_ids)

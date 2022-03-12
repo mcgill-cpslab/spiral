@@ -45,12 +45,12 @@ def test_citation_graph_torch():
 
     this_graph = CitationGraph(edges, nodes, times)
     assert len(this_graph) == len(times)
-    ob_0 = this_graph.dispatcher(0)
+    ob_0,_ = this_graph.dispatcher(0)
     assert ob_0.t == 0
     assert ob_0.observation.num_edges() == 2
     assert ob_0.observation.num_nodes() == 3
     assert np.sum(ob_0.observation.ndata['h'].numpy()[:, -1]) == 0
-    ob_1 = this_graph.dispatcher(1)
+    ob_1, _ = this_graph.dispatcher(1)
     assert ob_1.t == 1
     assert ob_1.observation.num_edges() == 3
     assert ob_1.observation.num_nodes() == 4
@@ -84,12 +84,12 @@ def test_citation_graph_tf():
 
     this_graph = CitationGraph(edges, nodes, times)
     assert len(this_graph) == len(times)
-    ob_0 = this_graph.dispatcher(0)
+    ob_0,_ = this_graph.dispatcher(0)
     assert ob_0.t == 0
     assert ob_0.observation.num_edges() == 2
     assert ob_0.observation.num_nodes() == 3
     assert np.sum(ob_0.observation.ndata['h'].numpy()[:, -1]) == 0
-    ob_1 = this_graph.dispatcher(1)
+    ob_1, _ = this_graph.dispatcher(1)
     assert ob_1.t == 1
     assert ob_1.observation.num_edges() == 3
     assert ob_1.observation.num_nodes() == 4

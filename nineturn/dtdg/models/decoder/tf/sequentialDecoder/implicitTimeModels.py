@@ -26,6 +26,24 @@ from nineturn.core.layers import TSA, Conv1d, Time2Vec
 from nineturn.core.types import nt_layers_list
 from nineturn.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily
 from nineturn.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
+from nineturn.core.errors import DimensionError
+
+
+def _process_target_ids(ids_in: tf.Tensor) -> Tuple[np.ndarray, tf.Tensor]:
+    ids_rank = tf.rank(ids_in).numpy()
+    if ids_rank == 1:
+        ids = ids_in.numpy()
+        ids_id = ids_in
+    elif ids_rank == 2:
+        ids, ids_id = tf.unique(tf.reshape(ids_in, [-1]))
+        ids = ids.numpy()
+        ids_id = tf.reshape(ids_id,[-1,2]) # map original node index to new index in the selected node embeding
+    else:
+        message = f"""The index to predict in the input must be of rank 1 for node prediction or rank 2 for edge
+        prediction. But get an input index of rank {ids_rank}"""
+        logger.error(message)
+        raise DimensionError(message)
+    return (ids, ids_id)
 
 
 class NodeMemory:
@@ -111,8 +129,8 @@ class RnnFamily(BaseModel):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
@@ -120,7 +138,7 @@ class RnnFamily(BaseModel):
         out_sequential = out_result[0]
         new_h = out_result[1:]
         self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id))
         return out
 
 
@@ -181,8 +199,8 @@ class LSTM(RnnFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         out_sequential = tf.reshape(node_embs, [-1, 1, self.input_d])
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
@@ -195,7 +213,7 @@ class LSTM(RnnFamily):
         new_c = [i[1] for i in new_hc]
         self.memory_h.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_h)), [1, 0, 2]), ids)
         self.memory_c.update_memory(tf.transpose(tf.squeeze(tf.convert_to_tensor(new_c)), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids))
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id))
         return out
 
 
@@ -292,8 +310,8 @@ class SelfAttention(SlidingWindowFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
         input_windows = tf.convert_to_tensor(
@@ -304,7 +322,7 @@ class SelfAttention(SlidingWindowFamily):
             new_current = layer(current, current)
             current = tf.identity(new_current)
         last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids_id))
         return out
 
 
@@ -343,8 +361,8 @@ class PTSA(SlidingWindowFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
         input_windows = tf.convert_to_tensor(
@@ -357,7 +375,7 @@ class PTSA(SlidingWindowFamily):
         last_sequence = tf.slice(
             input_windows, [0, self.window_size - 1, 0], [input_windows.shape[0], 1, input_windows.shape[2]]
         )
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_windows.shape[2]]), ids))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_windows.shape[2]]), ids_id))
         return out
 
 
@@ -428,8 +446,8 @@ class FTSAConcate(SlidingWindowFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
         input_windows = tf.convert_to_tensor(
@@ -444,7 +462,7 @@ class FTSAConcate(SlidingWindowFamily):
         last_sequence = tf.slice(
             input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
         )
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id))
         return out
 
 
@@ -492,8 +510,8 @@ class FTSASum(SlidingWindowFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
         input_windows = tf.convert_to_tensor(
@@ -514,7 +532,7 @@ class FTSASum(SlidingWindowFamily):
         last_sequence = tf.slice(
             input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
         )
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id))
         return out
 
 
@@ -552,8 +570,8 @@ class Conv1D(SlidingWindowFamily):
         # sequence length = 1
         # the sequential model processes each node at each step
         # each snapshot the input number of nodes will change, but should only be increasing for V invariant DTDG.
-        node_embs, ids = in_state
-        ids = ids.numpy()
+        node_embs, ids_in = in_state
+        ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
         input_windows = tf.convert_to_tensor(
@@ -564,5 +582,5 @@ class Conv1D(SlidingWindowFamily):
             new_current = layer(current)
             current = tf.identity(new_current)
         last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids))
+        out = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids_id))
         return out
