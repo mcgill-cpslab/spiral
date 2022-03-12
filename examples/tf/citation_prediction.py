@@ -23,8 +23,8 @@ if __name__ == '__main__':
     data_to_test = supported_ogb_datasets()[1]
     this_graph = ogb_dataset(data_to_test)
     n_snapshot = len(this_graph)
-    n_nodes = this_graph.dispatcher(n_snapshot -1).observation.num_nodes()
-    this_snapshot = this_graph.dispatcher(20)
+    n_nodes = this_graph.dispatcher(n_snapshot -1)[0].observation.num_nodes()
+    this_snapshot,_ = this_graph.dispatcher(20)
     in_dim = this_snapshot.num_node_features()
     hidden_dim = 32
     num_GNN_layers = 2
@@ -83,11 +83,10 @@ if __name__ == '__main__':
                 for epoch in range(epochs):
                     this_model.decoder.reset_memory_state()
                     this_model.decoder.training()
-                    for t in range(1,n_snapshot-2):
+                    for t in range(2,n_snapshot-2):
                         with tf.GradientTape() as tape:
-                            this_snapshot = this_graph.dispatcher(t)
-                            next_snapshot = this_graph.dispatcher(t+1)
-                            node_samples = np.arange(this_snapshot.num_nodes())
+                            this_snapshot, node_samples = this_graph.dispatcher(t)
+                            next_snapshot,_ = this_graph.dispatcher(t+1)
                             predict = this_model((this_snapshot,node_samples))
                             label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
                             all_predictions.append(tf.squeeze(predict).numpy())
@@ -98,9 +97,8 @@ if __name__ == '__main__':
                     print(loss_list[-1])
 
                     this_model.decoder.eval_mode()
-                    this_snapshot = this_graph.dispatcher(n_snapshot-2)
-                    next_snapshot = this_graph.dispatcher(n_snapshot-1)
-                    node_samples = np.arange(this_snapshot.num_nodes())
+                    this_snapshot,node_samples = this_graph.dispatcher(n_snapshot-2)
+                    next_snapshot,_ = this_graph.dispatcher(n_snapshot-1)
                     predict = this_model((this_snapshot,node_samples))
                     label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
                     eval_predictions.append(tf.squeeze(predict).numpy())
