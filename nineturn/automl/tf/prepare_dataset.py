@@ -19,6 +19,7 @@ import numpy as np
 from nineturn.core.dataio import neg_sampling
 from nineturn.dtdg.types import VEInvariantDTDG, Snapshot
 from nineturn.core.errors import DimensionError
+from nineturn.core.commonF import to_tensor
 
 TARGET = 'target'
 LABEL = 'label'
@@ -61,11 +62,11 @@ def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int
             pos += edges[0]
             neg += edges[1]
         
-        edge_to_re = [dgraph.edge_id[f"{e[0]}_{e[1]}"] for e in pos]
-        dgraph.time_data['positive_edges'][t] = edge_to_re
+        edge_to_re = np.array([dgraph.edge_id[f"{e[0]}_{e[1]}"] for e in pos])
+        dgraph.time_data['positive_edges'][t] = to_tensor(edge_to_re.astype('int64'))
         edge_target = pos + neg
-        dgraph.time_data[TARGET][t] = np.array(edge_target)
+        dgraph.time_data[TARGET][t] = to_tensor(np.array(edge_target).astype('int64'))
         if len(pos) < 1 or len(neg) < 1:
             raise DimensionError(f"positive and negative sample has {len(pos)} and {len(neg)} edges") 
         labels = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))))
-        dgraph.time_data[LABEL][t] = labels
+        dgraph.time_data[LABEL][t] = to_tensor(labels)
