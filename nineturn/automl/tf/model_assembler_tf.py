@@ -35,8 +35,8 @@ class Assembler(keras.Model):
 
     def call(self, input_state, training=False):
         """Forward function."""
-        h = self.encoder.call(input_state, training)
-        h = self.decoder.call(h, training)
+        h = self.encoder(input_state, training)
+        h = self.decoder(h, training)
         return h
 
     def save_model(self, path: str):

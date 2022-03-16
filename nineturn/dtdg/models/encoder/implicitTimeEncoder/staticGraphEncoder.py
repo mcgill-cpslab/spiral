@@ -245,7 +245,7 @@ class GAT(StaticGraphEncoder):
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         snapshot, dst_node_ids = in_sample
-        g = snapshot.observation
+        g = add_self_loop(snapshot.observation)
         h = snapshot.node_feature()
         for i in range(self.n_layers):
             h = self.layers[i](g, h)

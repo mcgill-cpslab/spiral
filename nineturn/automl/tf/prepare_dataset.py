@@ -17,9 +17,10 @@
 from typing import Dict, List, Tuple
 import numpy as np
 from nineturn.core.dataio import neg_sampling
-from nineturn.dtdg.types import VEInvariantDTDG, Snapshot
+from nineturn.dtdg.types import VEInvariantDTDG, Snapshot, FEAT, CitationGraph
 from nineturn.core.errors import DimensionError
 from nineturn.core.commonF import to_tensor
+import tensorflow as tf
 
 TARGET = 'target'
 LABEL = 'label'
@@ -71,3 +72,34 @@ def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int
             raise DimensionError(f"positive and negative sample has {len(pos)} and {len(neg)} edges") 
         labels = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))+float(negative_label)))
         dgraph.time_data[LABEL][t] = to_tensor(labels)
+
+def prepare_citation_task(dgraph: CitationGraph, start_t:int=1):
+    times = len(dgraph)
+    dgraph.time_data[TARGET] = {}
+    dgraph.time_data[LABEL] = {}
+    for t in range(start_t, times-5):
+        this_snapshot, node_samples = dgraph.dispatcher(t)
+        next_snapshot,_ = dgraph.dispatcher(t+1)
+        later_5, _ = dgraph.dispatcher(t+5)
+        target = np.where(later_5.node_feature().numpy()[node_samples, -1] > 5)
+        #new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1] - this_snapshot.node_feature()[:, -1]
+        new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
+        label = to_tensor(new_citation.numpy()[(target)])
+        dgraph.time_data[TARGET][t] = tf.reshape(to_tensor(target, dtype=tf.int32), [-1])
+        dgraph.time_data[LABEL][t] = tf.reshape(label , [-1])
+        
+
+    target =  dgraph.time_data[TARGET][times-6].numpy()
+    for t in range(times-5,times-1):
+        this_snapshot, node_samples = dgraph.dispatcher(t)
+        next_snapshot,_ = dgraph.dispatcher(t+1)
+        new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
+        label = new_citation.numpy()[(target)]
+        dgraph.time_data[TARGET][t] = tf.reshape(to_tensor(target, tf.int32),-1)
+        dgraph.time_data[LABEL][t] = tf.reshape(label,-1)
+
+
+
+
+
+
