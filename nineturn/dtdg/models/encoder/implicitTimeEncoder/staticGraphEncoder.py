@@ -291,10 +291,12 @@ class GAT(StaticGraphEncoder):
 class GraphSage(StaticGraphEncoder):
     """A wrapper of DGL SAGEConv."""
 
-    def __init__(self, aggregator: str, in_feat: int, n_hidden: int, **kwargs):
+    def __init__(self, aggregator: str, in_feat: int, n_hidden: int, depth:int=50, **kwargs):
         """Create GraphSage based on SAGEConv."""
         super().__init__()
         self.layers.append(SAGEConv(in_feat, n_hidden, aggregator, **kwargs))
+        for i in range(1, depth):
+            self.layers.append(SAGEConv(n_hidden, n_hidden, aggregator, **kwargs))
 
     def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """Forward function.
@@ -313,5 +315,8 @@ class GraphSage(StaticGraphEncoder):
         else:
             g = snapshot.observation
             h = snapshot.node_feature()
-        h = self.layers[0](g, h)
+
+        for i in range(depth):
+            h_ = self.layers[0](g, h)
+
         return (h, dst_node_ids)

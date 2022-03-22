@@ -73,15 +73,15 @@ def prepare_edge_task(dgraph: VEInvariantDTDG, num_postive:int, num_negative:int
         labels = np.concatenate((np.ones(len(pos)), np.zeros(len(neg))+float(negative_label)))
         dgraph.time_data[LABEL][t] = to_tensor(labels)
 
-def prepare_citation_task(dgraph: CitationGraph, start_t:int=1):
+def prepare_citation_task(dgraph: CitationGraph, start_t:int=1, validating_snapshots:int = 5, minimum_citation:int=5):
     times = len(dgraph)
     dgraph.time_data[TARGET] = {}
     dgraph.time_data[LABEL] = {}
-    for t in range(start_t, times-5):
+    for t in range(start_t, times-validating_snapshots-1):
         this_snapshot, node_samples = dgraph.dispatcher(t)
         next_snapshot,_ = dgraph.dispatcher(t+1)
-        later_5, _ = dgraph.dispatcher(t+5)
-        target = np.where(later_5.node_feature().numpy()[node_samples, -1] > 5)
+        later_5, _ = dgraph.dispatcher(t+validating_snapshots)
+        target = np.where(later_5.node_feature().numpy()[node_samples, -1] > minimum_citation)
         #new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1] - this_snapshot.node_feature()[:, -1]
         new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]
         label = to_tensor(new_citation.numpy()[(target)])
@@ -89,8 +89,8 @@ def prepare_citation_task(dgraph: CitationGraph, start_t:int=1):
         dgraph.time_data[LABEL][t] = tf.reshape(label , [-1])
         
 
-    target =  dgraph.time_data[TARGET][times-6].numpy()
-    for t in range(times-5,times-1):
+    target =  dgraph.time_data[TARGET][times-2-validating_snapshots].numpy()
+    for t in range(times-validating_snapshots-1,times-1):
         this_snapshot, node_samples = dgraph.dispatcher(t)
         next_snapshot,_ = dgraph.dispatcher(t+1)
         new_citation = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1]

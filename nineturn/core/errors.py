@@ -37,3 +37,13 @@ class BackendNotSupportedError(Exception):
     def __init__(self, message):
         """Just need the error message to tell what is the error."""
         super().__init__(message)
+
+
+class ValueError(Exception):
+    """Nine Turn error specific to not sorted inputs."""
+
+    def __init__(self, message):
+        """Just need the error message to tell what is the error."""
+        super().__init__(message)
+
+
