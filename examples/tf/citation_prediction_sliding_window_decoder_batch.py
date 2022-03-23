@@ -8,12 +8,14 @@ from nineturn.core.config import  set_backend
 set_backend(TENSORFLOW)
 from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
 from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
-from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D
+from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D, NodeTrackingPTSA
 from nineturn.dtdg.models.decoder.simpleDecoders import MLP
 from nineturn.core.commonF import to_tensor
+from nineturn.core.utils import printProgressBar
 from nineturn.automl.model_assembler import assembler
 from nineturn.automl.tf.prepare_dataset import prepare_citation_task, TARGET, LABEL
 from nineturn.automl.tf.batch_training import NodeBatchGenerator
+
 
 """
 def loss_fn(predict, label):
@@ -34,11 +36,11 @@ if __name__ == '__main__':
     layer_dims = [64,output_dim]
     activation_f = None
     encoders = ['gcn', 'sgcn', 'gat', 'sage']
-    decoders = ['sa', 'ptsa', 'tsa_sum', 'conv1d']
+    decoders = ['sa', 'ptsa', 'node_tracking_ptsa', 'tsa_sum', 'node_tracking_tsa', 'conv1d']
     epochs = 1000
     prepare_citation_task(this_graph)
-    for g in range(4):
-        for r in range(2,3):
+    for g in range(1):
+        for r in range(6):
             #set up logger
             this_logger = logging.getLogger('citation_predictoin_pipeline')
             this_logger.setLevel(logging.INFO)
@@ -69,8 +71,12 @@ if __name__ == '__main__':
                 elif r == 1:
                     sa = PTSA( 3, hidden_dim,layer_dims , n_nodes, 5, output_decoder)
                 elif r == 2:
-                    sa = FTSA( 3, hidden_dim, layer_dims, n_nodes, 5,3,'sum', output_decoder)
+                    sa = NodeTrackingPTSA( 3, hidden_dim,layer_dims , n_nodes, 5, output_decoder)
                 elif r == 3:
+                    sa = FTSA( 3, hidden_dim, layer_dims, n_nodes, 5,3,'sum', output_decoder)
+                elif r == 4:
+                    sa = FTSA( 3, hidden_dim, layer_dims, n_nodes, 5,3,'sum', output_decoder, node_tracking=True)
+                elif r == 5:
                     sa = Conv1D(hidden_dim, [8,output_dim], n_nodes, 5, output_decoder)
                 else:
                     pass
@@ -88,19 +94,25 @@ if __name__ == '__main__':
                 eval_predictions2= []
                 lr = 1e-3
                 optimizer = keras.optimizers.Adam(learning_rate=lr, epsilon=1e-8)
+                batch_size = 5000
                 batchs = NodeBatchGenerator(this_graph, 40, 10, n_snapshot-2)
                 eval_batchs = NodeBatchGenerator(this_graph, 40, n_snapshot-2, n_snapshot-1)
+                total_batches = len(batchs)
                 for epoch in range(epochs):
                     this_model.decoder.training()
                     this_model.decoder.memory.reset_state()
+                    progress = 0
+                    printProgressBar(progress, total_batches, prefix = 'Progress:', suffix = 'Complete', length = 50)
                     for snapshot, target, label in batchs:
                         with tf.GradientTape() as tape:
                             predict = tf.reshape(this_model((snapshot,target), training=True), (-1))
                             all_predictions.append(predict.numpy())
                             loss = loss_fn(label,predict)
-                            grads = tape.gradient(loss, this_model.trainable_weights)
-                            optimizer.apply_gradients(zip(grads, this_model.trainable_weights))
-                            loss_list.append(loss.numpy())
+                        grads = tape.gradient(loss, this_model.trainable_weights)
+                        optimizer.apply_gradients(zip(grads, this_model.trainable_weights))
+                        loss_list.append(loss.numpy())
+                        progress+=1
+                        printProgressBar(progress, total_batches, prefix = 'Progress:', suffix = 'Complete', length = 50)
                     print(f"train loss: {loss_list[-1]}")
                     eval_t = n_snapshot - 2
                     predicts = np.array([])
