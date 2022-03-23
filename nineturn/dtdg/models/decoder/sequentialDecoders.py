@@ -27,6 +27,7 @@ if this_backend == TENSORFLOW:
         GRU,
         LSTM,
         PTSA,
+        NodeTrackingPTSA,
         RNN,
         Conv1D,
         SelfAttention,
