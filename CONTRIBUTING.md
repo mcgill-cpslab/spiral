@@ -48,11 +48,16 @@ If you are proposing a feature:
 
 Ready to contribute? Here's how to set up `nineturn` for local development.
 
-1. Find an issue you want to work on..
-2. Clone `nineturn` locally
+1. Find an issue you want to work on.
+
+2. Fork repository.
+![alt text](https://github.com/mcgill-cpslab/spiral/blob/master/imgs/fork.png?raw=true)
+
+
+2. Clone your `namespace`(the fork ^^) locally
 
     ```
-    $ git clone https://github.com/mcgill-cpslab/spiral.git
+    $ git clone https://github.com/Account/spiral
     ```
 
 3. Ensure [poetry](https://python-poetry.org/docs/) is installed.
@@ -66,7 +71,7 @@ Ready to contribute? Here's how to set up `nineturn` for local development.
    You can create your local development branch from the project branch with name prefix as 'project/' for local development:
 
     ```
-    $ git checkout project/a_project_branch
+    $ git checkout master
     $ git checkout -b feature/name-of-your-feature
     ```
     
