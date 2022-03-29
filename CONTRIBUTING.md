@@ -51,7 +51,7 @@ Ready to contribute? Here's how to set up `nineturn` for local development.
 1. Find an issue you want to work on.
 
 2. Fork repository.
-![alt text](https://github.com/mcgill-cpslab/spiral/blob/master/imgs/fork.png?raw=true)
+![alt text](https://github.com/CooKey-Monster/spiral/blob/contributing_edit/imgs/fork.png)
 
 
 2. Clone your `namespace`(the fork ^^) locally
