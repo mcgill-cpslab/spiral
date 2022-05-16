@@ -253,6 +253,14 @@ docs = ["furo (>=2021.8.17b43)", "sphinx (>=4.1)", "sphinx-autodoc-typehints (>=
 testing = ["covdefaults (>=1.2.0)", "coverage (>=4)", "pytest (>=4)", "pytest-cov", "pytest-timeout (>=1.4.2)"]
 
 [[package]]
+name = "findspark"
+version = "2.0.1"
+description = "Find pyspark to make it importable."
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "flake8"
 version = "3.9.2"
 description = "the modular source code checker: pep8 pyflakes and co"
@@ -890,6 +898,14 @@ optional = true
 python-versions = ">=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*"
 
 [[package]]
+name = "py4j"
+version = "0.10.9.3"
+description = "Enables Python programs to dynamically access arbitrary Java objects"
+category = "main"
+optional = false
+python-versions = "*"
+
+[[package]]
 name = "py7zr"
 version = "0.17.4"
 description = "Pure python 7-zip library"
@@ -1038,6 +1054,23 @@ check = ["mypy (>=0.812)", "mypy-extensions (>=0.4.3)", "check-manifest", "flake
 docs = ["sphinx (>=2.3)", "sphinx-rtd-theme"]
 fuzzer = ["atheris", "hypothesis"]
 test = ["pytest (>=6.0)", "pytest-benchmark", "pytest-cov", "pytest-timeout", "hypothesis", "coverage[toml] (>=5.2)"]
+
+[[package]]
+name = "pyspark"
+version = "3.2.1"
+description = "Apache Spark Python API"
+category = "main"
+optional = false
+python-versions = ">=3.6"
+
+[package.dependencies]
+py4j = "0.10.9.3"
+
+[package.extras]
+ml = ["numpy (>=1.7)"]
+mllib = ["numpy (>=1.7)"]
+pandas_on_spark = ["numpy (>=1.14)", "pandas (>=0.23.2)", "pyarrow (>=1.0.0)"]
+sql = ["pandas (>=0.23.2)", "pyarrow (>=1.0.0)"]
 
 [[package]]
 name = "pytest"
@@ -1589,7 +1622,7 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "dd61733675f6b3a3a93c08bdc26ebb85d9bd9f8064e81b7b7e073c7768ee017a"
+content-hash = "a6d19965a58803eef99069e06dcf71d443162e2b36122ca38fa8e39cdb2364a6"
 
 [metadata.files]
 absl-py = [
@@ -1886,6 +1919,10 @@ docutils = [
 filelock = [
     {file = "filelock-3.6.0-py3-none-any.whl", hash = "sha256:f8314284bfffbdcfa0ff3d7992b023d4c628ced6feb957351d4c48d059f56bc0"},
     {file = "filelock-3.6.0.tar.gz", hash = "sha256:9cd540a9352e432c7246a48fe4e8712b10acb1df2ad1f30e8c070b82ae1fed85"},
+]
+findspark = [
+    {file = "findspark-2.0.1-py2.py3-none-any.whl", hash = "sha256:e5d5415ff8ced6b173b801e12fc90c1eefca1fb6bf9c19c4fc1f235d4222e753"},
+    {file = "findspark-2.0.1.tar.gz", hash = "sha256:aa10a96cb616cab329181d72e8ef13d2dc453b4babd02b5482471a0882c1195e"},
 ]
 flake8 = [
     {file = "flake8-3.9.2-py2.py3-none-any.whl", hash = "sha256:bf8fd333346d844f616e8d47905ef3a3384edae6b4e9beb0c5101e25e3110907"},
@@ -2287,6 +2324,10 @@ py = [
     {file = "py-1.11.0-py2.py3-none-any.whl", hash = "sha256:607c53218732647dff4acdfcd50cb62615cedf612e72d1724fb1a0cc6405b378"},
     {file = "py-1.11.0.tar.gz", hash = "sha256:51c75c4126074b472f746a24399ad32f6053d1b34b68d2fa41e558e6f4a98719"},
 ]
+py4j = [
+    {file = "py4j-0.10.9.3-py2.py3-none-any.whl", hash = "sha256:04f5b06917c0c8a81ab34121dda09a2ba1f74e96d59203c821d5cb7d28c35363"},
+    {file = "py4j-0.10.9.3.tar.gz", hash = "sha256:0d92844da4cb747155b9563c44fc322c9a1562b3ef0979ae692dbde732d784dd"},
+]
 py7zr = [
     {file = "py7zr-0.17.4-py3-none-any.whl", hash = "sha256:69489b15f6ed1fdee1380092541f02fba193ea8fb5a854bc6ff9cd78cce3440d"},
     {file = "py7zr-0.17.4.tar.gz", hash = "sha256:1df67edaa8dd1613fc5a7de3354322e7bc75d989d6069924ce2d08bb7fabdd19"},
@@ -2469,6 +2510,9 @@ pyppmd = [
     {file = "pyppmd-0.17.3-pp37-pypy37_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:363392f5aa61606888a6ecaa84dbc069a69817dfc2807949c94c0f58283b21d3"},
     {file = "pyppmd-0.17.3-pp37-pypy37_pp73-win_amd64.whl", hash = "sha256:a876190bf95d9821ac2a605164ed413bc39656f66e9e1a33e1d05bde4885f45c"},
     {file = "pyppmd-0.17.3.tar.gz", hash = "sha256:05a4765833623d5cc1c9afc27d9b05fb64f0319711beffe0b44d9695eb1beb0a"},
+]
+pyspark = [
+    {file = "pyspark-3.2.1.tar.gz", hash = "sha256:0b81359262ec6e9ac78c353344e7de026027d140c6def949ff0d80ab70f89a54"},
 ]
 pytest = [
     {file = "pytest-6.2.5-py3-none-any.whl", hash = "sha256:7310f8d27bc79ced999e760ca304d69f6ba6c6649c0b60fb0e04a4a77cacc134"},
