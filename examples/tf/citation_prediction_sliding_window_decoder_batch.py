@@ -3,18 +3,18 @@ import tensorflow as tf
 from tensorflow import keras
 import logging
 import datetime
-from nineturn.core.backends import TENSORFLOW
-from nineturn.core.config import  set_backend
+from spiro.core.backends import TENSORFLOW
+from spiro.core.config import  set_backend
 set_backend(TENSORFLOW)
-from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
-from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
-from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D, NodeTrackingPTSA
-from nineturn.dtdg.models.decoder.simpleDecoders import MLP
-from nineturn.core.commonF import to_tensor
-from nineturn.core.utils import printProgressBar
-from nineturn.automl.model_assembler import assembler
-from nineturn.automl.tf.prepare_dataset import prepare_citation_task, TARGET, LABEL
-from nineturn.automl.tf.batch_training import NodeBatchGenerator
+from spiro.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
+from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
+from spiro.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D, NodeTrackingPTSA
+from spiro.dtdg.models.decoder.simpleDecoders import MLP
+from spiro.core.commonF import to_tensor
+from spiro.core.utils import printProgressBar
+from spiro.automl.model_assembler import assembler
+from spiro.automl.tf.prepare_dataset import prepare_citation_task, TARGET, LABEL
+from spiro.automl.tf.batch_training import NodeBatchGenerator
 
 
 """
