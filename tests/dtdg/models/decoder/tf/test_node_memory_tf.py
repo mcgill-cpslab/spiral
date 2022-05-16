@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # flake8: noqa
-"""Tests `nineturn.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels` package."""
+"""Tests `spiro.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels` package."""
 import numpy as np
 import tensorflow as tf
 from tests.core.common_functions import *
@@ -9,10 +9,10 @@ from tests.core.common_functions import *
 def test_node_memory_tf():
     """Test NodeMemory"""
     clear_background()
-    from nineturn.core.config import set_backend
-    from nineturn.core.backends import TENSORFLOW
+    from spiro.core.config import set_backend
+    from spiro.core.backends import TENSORFLOW
     set_backend(TENSORFLOW)
-    from nineturn.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import NodeMemory
+    from spiro.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import NodeMemory
 
     n_nodes = 5
     hidden_d = 2

@@ -1,20 +1,20 @@
 #!/usr/bin/env python
 # flake8: noqa
-"""Tests `nineturn.core.config` package."""
+"""Tests `spiro.core.config` package."""
 
 import os
 import numpy as np
 import tensorflow as tf
-from nineturn.core.backends import TENSORFLOW, PYTORCH
+from spiro.core.backends import TENSORFLOW, PYTORCH
 from tests.core.common_functions import *
-from nineturn.core.logger import get_logger
+from spiro.core.logger import get_logger
 
 def test_conv1d_tf():
     clear_background()
-    from nineturn.core.config import _BACKEND, set_backend
+    from spiro.core.config import _BACKEND, set_backend
 
     set_backend(TENSORFLOW)
-    from nineturn.core.layers import Conv1d
+    from spiro.core.layers import Conv1d
     
     features = 5
     output_dimension = 2

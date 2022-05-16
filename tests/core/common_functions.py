@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 # flake8: noqa
-"""Tests `nineturn.core.config` package."""
+"""Tests `spiro.core.config` package."""
 
 import os
 import sys
-from nineturn.core.backends import TENSORFLOW, PYTORCH
+from spiro.core.backends import TENSORFLOW, PYTORCH
 
 dummy = "dummy"
 NINETURN_BACKEND = "NINETURN_BACKEND"
@@ -17,7 +17,7 @@ BACKEND_NOT_FOUND = f"""
 
 
 def clear_background():
-    modules_to_clear = [k for k in sys.modules.keys() if ('nineturn' in k) or ('dgl' in k)]
+    modules_to_clear = [k for k in sys.modules.keys() if ('spiro' in k) or ('dgl' in k)]
     for k in modules_to_clear:
         del sys.modules[k]
     if DGL_BACKEND in os.environ:

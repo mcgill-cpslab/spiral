@@ -1,9 +1,9 @@
 #!/usr/bin/env python
-"""Tests `nineturn.core.config` package."""
+"""Tests `spiro.core.config` package."""
 
 import os
-from nineturn.core.backends import TENSORFLOW, PYTORCH
-from nineturn.core.config import set_backend
+from spiro.core.backends import TENSORFLOW, PYTORCH
+from spiro.core.config import set_backend
 from tests.core.common_functions import *
 
 

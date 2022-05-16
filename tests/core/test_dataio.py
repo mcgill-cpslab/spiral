@@ -1,10 +1,10 @@
 #!/usr/bin/env python
-"""Tests `nineturn.core.config` package."""
+"""Tests `spiro.core.config` package."""
 
-from nineturn.core.dataio import neg_sampling
+from spiro.core.dataio import neg_sampling
 from tests.core.common_functions import *
 import numpy as np
-from nineturn.core.logger import get_logger
+from spiro.core.logger import get_logger
 
 logger = get_logger()
 
