@@ -18,7 +18,7 @@ This file define the types required for dtdg package
 """
 import copy
 from abc import ABC, abstractmethod
-from typing import List, Tuple, Dict
+from typing import Dict, List, Tuple
 
 import dgl
 import numpy as np
@@ -192,7 +192,7 @@ class VEInvariantDTDG(DiscreteGraph):
         self._node_time_anchors = get_anchor_position(nodes[:, TIME_D], range(len(self.timestamps)))
         self._edge_time_anchors = get_anchor_position(edges[:, TIME_D], range(len(self.timestamps)))
         self.edge_id = {f"{int(self.edges[i][1])}_{int(self.edges[i][2])}": i for i in range(len(self.edges))}
-        self.time_data:Dict = {}
+        self.time_data: Dict = {}
 
     def dispatcher(self, t: int) -> Tuple[Snapshot, Tensor]:
         """Return a snapshot for the input time index. Time index start from 0, end at num_snapshot - 1."""

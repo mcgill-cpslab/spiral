@@ -15,9 +15,10 @@
 """pytorch specific common functions."""
 
 from typing import List
-from torch import Tensor
+
 import torch
 from numpy import ndarray
+from torch import Tensor
 
 
 def _to_tensor(arr: ndarray) -> Tensor:

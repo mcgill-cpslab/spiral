@@ -16,8 +16,8 @@
 from typing import List, Tuple
 
 import numpy as np
-from numpy import ndarray as Ndarray
 import tensorflow as tf
+from numpy import ndarray as Ndarray
 from tensorflow import Tensor
 from tensorflow.keras import layers
 
