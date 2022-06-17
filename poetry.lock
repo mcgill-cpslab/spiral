@@ -452,11 +452,11 @@ trio = ["trio", "async-generator"]
 
 [[package]]
 name = "jinja2"
-version = "3.1.2"
+version = "3.0.3"
 description = "A very fast and expressive template engine."
 category = "main"
-optional = true
-python-versions = ">=3.7"
+optional = false
+python-versions = ">=3.6"
 
 [package.dependencies]
 MarkupSafe = ">=2.0"
@@ -550,7 +550,7 @@ name = "markupsafe"
 version = "2.1.1"
 description = "Safely add untrusted strings to HTML/XML markup."
 category = "main"
-optional = true
+optional = false
 python-versions = ">=3.7"
 
 [[package]]
@@ -1617,7 +1617,7 @@ test = ["pytest", "black", "isort", "mypy", "flake8", "flake8-docstrings", "pyte
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "5a9c5125aaf2ec58a4d3513829508b0cdfff9ee0166083d1a5205dc993ce7e65"
+content-hash = "ff4a094db5f858c777ce1b62ed0681cd415fd4254b12e271be346fad341a4fb6"
 
 [metadata.files]
 absl-py = [
@@ -2043,8 +2043,8 @@ jeepney = [
     {file = "jeepney-0.8.0.tar.gz", hash = "sha256:5efe48d255973902f6badc3ce55e2aa6c5c3b3bc642059ef3a91247bcfcc5806"},
 ]
 jinja2 = [
-    {file = "Jinja2-3.1.2-py3-none-any.whl", hash = "sha256:6088930bfe239f0e6710546ab9c19c9ef35e29792895fed6e6e31a023a182a61"},
-    {file = "Jinja2-3.1.2.tar.gz", hash = "sha256:31351a702a408a9e7595a8fc6150fc3f43bb6bf7e319770cbc0db9df9437e852"},
+    {file = "Jinja2-3.0.3-py3-none-any.whl", hash = "sha256:077ce6014f7b40d03b47d1f1ca4b0fc8328a692bd284016f806ed0eaca390ad8"},
+    {file = "Jinja2-3.0.3.tar.gz", hash = "sha256:611bb273cd68f3b993fabdc4064fc858c5b47a973cb5aa7999ec1ba405c87cd7"},
 ]
 joblib = [
     {file = "joblib-1.1.0-py2.py3-none-any.whl", hash = "sha256:f21f109b3c7ff9d95f8387f752d0d9c34a02aa2f7060c2135f465da0e5160ff6"},
