@@ -16,12 +16,12 @@
 
 
 import numpy as np
-from numpy import array
+from numpy import ndarray
 
 from spiro.core.config import _BACKEND
 
 
-def is_sorted(array_to_check: array) -> bool:
+def is_sorted(array_to_check: ndarray) -> bool:
     """Check if the input 1 d array is sorted asc.
 
     Args:
@@ -30,10 +30,10 @@ def is_sorted(array_to_check: array) -> bool:
     Return:
         Boolean
     """
-    return np.all(array_to_check[:-1] <= array_to_check[1:])
+    return bool(np.all(array_to_check[:-1] <= array_to_check[1:]))
 
 
-def get_anchor_position(arr_to_search: array, anchors: array) -> array:
+def get_anchor_position(arr_to_search: ndarray, anchors: ndarray) -> ndarray:
     """Get the position of anchors in a sorted array.
 
     Args:
@@ -59,26 +59,25 @@ def _get_backend() -> str:
     """Internal functions to return the current backend."""
     return _BACKEND
 
+
 # Print iterations progress
-def printProgressBar (iteration, total, prefix = '', suffix = '', decimals = 1, length = 100, fill = '█', printEnd = "\r"):
-    """
-    Call in a loop to create terminal progress bar
-    @params:
-        iteration   - Required  : current iteration (Int)
-        total       - Required  : total iterations (Int)
-        prefix      - Optional  : prefix string (Str)
-        suffix      - Optional  : suffix string (Str)
-        decimals    - Optional  : positive number of decimals in percent complete (Int)
-        length      - Optional  : character length of bar (Int)
-        fill        - Optional  : bar fill character (Str)
-        printEnd    - Optional  : end character (e.g. "\r", "\r\n") (Str)
+def printProgressBar(iteration, total, prefix='', suffix='', decimals=1, length=100, fill='█', printEnd="\r"):
+    r"""Call in a loop to create terminal progress bar.
+
+    Args:
+        iteration: current iteration (Int)
+        total: total iterations (Int)
+        prefix: prefix string (Str)(Optional)
+        suffix: suffix string (Str)(Optional)
+        decimals: positive number of decimals in percent complete (Int)(Optional)
+        length: character length of bar (Int)(Optional)
+        fill: bar fill character (Str)(Optional)
+        printEnd: end character (e.g. "\r", "\r\n") (Str)(Optional)
     """
     percent = ("{0:." + str(decimals) + "f}").format(100 * (iteration / float(total)))
     filledLength = int(length * iteration // total)
     bar = fill * filledLength + '-' * (length - filledLength)
-    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end = printEnd)
+    print(f'\r{prefix} |{bar}| {percent}% {suffix}', end=printEnd)
     # Print New Line on Complete
-    if iteration == total: 
+    if iteration == total:
         print()
-
-

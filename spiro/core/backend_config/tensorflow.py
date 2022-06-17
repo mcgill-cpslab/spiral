@@ -12,32 +12,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""pytorch specific common functions."""
+"""global config for runtime.
 
-from typing import List
-from torch import Tensor
-import torch
-from numpy import ndarray
+This module define the runtime context which include backend when imported
+To use SpiroGraph, you should always import this module and then dgl
 
+Example:
+    >>> from spiro.core.backend_config import tensorflow
+    >>> import dgl
+"""
+from spiro.core.backends import TENSORFLOW
+from spiro.core.config import set_backend
 
-def _to_tensor(arr: ndarray) -> Tensor:
-    """Convert a numpy array to torch tensor."""
-    return torch.from_numpy(arr)
-
-
-def nt_layers_list() -> torch.nn.ModuleList:
-    """Create module list to store layers."""
-    return torch.nn.ModuleList()
-
-
-def reshape_tensor(h: torch.Tensor, new_shape: List[int]) -> Tensor:
-    """Reshape input tensor to new_shape.
-
-    Args:
-        h: Tensor to reshape
-        new_shape: the new shape after reshape
-
-    Return:
-        new Tensor with new_shape
-    """
-    return torch.reshape(h, new_shape)
+set_backend(TENSORFLOW)

@@ -14,13 +14,8 @@
 # ==============================================================================
 """Core data loading functions."""
 
-import os
-import os.path as osp
-import shutil
-
 import numpy as np
 from numpy import ndarray
-from ogb.utils.url import decide_download, download_url, extract_zip
 
 from spiro.core.logger import get_logger
 

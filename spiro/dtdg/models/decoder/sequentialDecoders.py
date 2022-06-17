@@ -28,11 +28,11 @@ if this_backend == TENSORFLOW:
         LSTM,
         LSTM_N,
         PTSA,
-        NodeTrackingPTSA,
         RNN,
         Conv1D,
-        SelfAttention,
         Conv1D_N,
+        NodeTrackingPTSA,
+        SelfAttention,
     )
 elif this_backend == PYTORCH:
     from spiro.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels import GRU, LSTM, RNN

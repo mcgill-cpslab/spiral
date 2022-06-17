@@ -14,13 +14,22 @@
 # ==============================================================================
 """Tensorflow based sequential decoder. Designed specially for dynamic graph learning."""
 from typing import List, Tuple
+
 import numpy as np
+from numpy import ndarray as Ndarray
 import tensorflow as tf
-from tensorflow.keras import layers
 from tensorflow import Tensor
+from tensorflow.keras import layers
+
+from spiro.core.commonF import to_tensor
+from spiro.core.errors import DimensionError
+from spiro.core.logger import get_logger
 from spiro.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
 
-def _process_target_ids(ids_in: tf.Tensor) -> Tuple[np.ndarray, tf.Tensor]:
+logger = get_logger()
+
+
+def _process_target_ids(ids_in: Tensor) -> Tuple[Ndarray, Tensor]:
     ids_rank = tf.rank(ids_in).numpy()
     if ids_rank == 1:
         ids = ids_in.numpy()
@@ -28,14 +37,13 @@ def _process_target_ids(ids_in: tf.Tensor) -> Tuple[np.ndarray, tf.Tensor]:
     elif ids_rank == 2:
         ids, ids_id = tf.unique(tf.reshape(ids_in, [-1]))
         ids = ids.numpy()
-        ids_id = tf.reshape(ids_id,[-1,2]) # map original node index to new index in the selected node embeding
+        ids_id = tf.reshape(ids_id, [-1, 2])  # map original node index to new index in the selected node embeding
     else:
         message = f"""The index to predict in the input must be of rank 1 for node prediction or rank 2 for edge
         prediction. But get an input index of rank {ids_rank}"""
         logger.error(message)
         raise DimensionError(message)
     return (ids, ids_id)
-
 
 
 class NodeMemory:
@@ -62,11 +70,12 @@ class NodeMemory:
         """Update memory [N,L,D]."""
         self.memory[inx] = new_memory.numpy()
 
-    def get_memory(self, inx: List[int]) -> np.ndarray:
+    def get_memory(self, inx: List[int]) -> Ndarray:
         """Retrieve node memory by index.Return shape [L,N,D]."""
         selected = self.memory[inx]
         result = np.einsum('lij->ilj', selected)
         return result
+
 
 class BaseModel(layers.Layer):
     """Prototype of sliding window based sequential decoders."""
@@ -97,6 +106,7 @@ class BaseModel(layers.Layer):
         """Set to batch training mode."""
         self.mini_batch = mini_batch
 
+
 class RnnFamily(BaseModel):
     """Prototype of RNN family sequential decoders."""
 
@@ -118,7 +128,7 @@ class RnnFamily(BaseModel):
         """Reset the node memory for hidden states."""
         self.memory_h.reset_state()
 
-    def get_weights(self) -> List[np.ndarray]:
+    def get_weights(self) -> List[Ndarray]:
         """Get model weights.
 
         Return:
@@ -126,21 +136,22 @@ class RnnFamily(BaseModel):
         """
         return [self.base_model.get_weights(), self.simple_decoder.get_weights(), self.memory_h.memory]
 
-    def set_weights(self, weights: List[np.ndarray]):
+    def set_weights(self, weights: List[Ndarray]):
         """Set weights for the model.
 
         Args:
-            weights: List[np.ndarray], value for new weights.
+            weights: List[Ndarray], value for new weights.
         """
         self.base_model.set_weights(weights[0])
         self.simple_decoder.set_weights(weights[1])
         self.memory_h.memory = weights[2]
 
-    def call(self, in_state: Tuple[Tensor, Tensor], training=False) -> Tensor:
+    def call(self, in_state: Tuple[Tensor, Tensor], training: bool = False) -> Tensor:
         """Forward function.
 
         Args:
             in_state: the input from encoder.
+            training: boolean, training mode or not
 
         Return:
             the prediction
@@ -158,7 +169,7 @@ class RnnFamily(BaseModel):
         out_sequential = out_result[0]
         new_h = out_result[1:]
         self.memory_h.update_memory(tf.transpose(tf.convert_to_tensor(new_h), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id),training=training)
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id), training=training)
         return out
 
 
@@ -182,7 +193,7 @@ class SlidingWindow:
         """Reset the memory to a random tensor."""
         self.memory = np.zeros((self.n_nodes, self.window_size, self.input_d))
 
-    def update_window(self, new_window: np.ndarray, inx: List[int]):
+    def update_window(self, new_window: Ndarray, inx: List[int]):
         """Update memory with input window.
 
         Args:
@@ -192,7 +203,7 @@ class SlidingWindow:
         self.memory[inx, :-1, :] = self.memory[inx, 1:, :]
         self.memory[inx, -1, :] = new_window
 
-    def get_memory(self, inx: List[int]) -> np.ndarray:
+    def get_memory(self, inx: List[int]) -> Ndarray:
         """Retrieve node memory by index.
 
         Args:
@@ -218,7 +229,9 @@ class SlidingWindowFamily(BaseModel):
         self.training_mode = True
         self.n_nodes = n_nodes
         self.memory = SlidingWindow(self.n_nodes, self.hidden_d, self.window_size)
+
     def reset_memory_state(self):
+        """Reset the model's memory of the sliding window."""
         self.memory.reset_state()
 
 
@@ -234,10 +247,10 @@ class NodeTrackingFamily:
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
-
         self.memory_node = NodeMemory(n_nodes, 1, 1)
-        self. memory_layer = tf.keras.layers.Dense(1)
+        self.memory_layer = tf.keras.layers.Dense(1)
         self.output_layer = tf.keras.layers.Dense(1)
-    
+
     def reset_node_memory(self):
+        """Reset the node memory."""
         self.memory_node.reset_state()

@@ -67,46 +67,63 @@ class TSA(Layer):
         """Compute the output shape."""
         return (input_shape[0], input_shape[1], self.out_dim)
 
-class DysatPtsa(Layer):
-    """ The input parameter num_time_steps is set as the total number of training snapshots +1."""
-    def __init__(self, input_dim, n_heads, num_time_steps, attn_drop, residual=False, bias=True,
-                 use_position_embedding=True, **kwargs):
-        super().__init__(name='Dysat_PTSALayer_' + score.upper())
 
+class DysatPtsa(Layer):
+    """Positional Temporal Self-Attention layer for Dysat."""
+
+    def __init__(
+        self,
+        input_dim,
+        n_heads,
+        num_time_steps,
+        attn_drop=0.2,
+        residual=False,
+        bias=True,
+        use_position_embedding=True,
+        **kwargs,
+    ):
+        """Initialize a PTSA layer.
+
+        Args:
+            input_dim: the dimension of the input
+            n_heads: number of attention heads
+            num_time_steps: the length of input sliding window
+            attn_drop: dropout rate of the attention layer in training
+            residual: default is False
+            bias: default is True
+            use_position_embedding: default is True
+        """
+        super().__init__(name='Dysat_PTSALayer_')
         self.bias = bias
         self.n_heads = n_heads
         self.num_time_steps = num_time_steps
-        self.attn_drop = attn_drop
         self.attn_wts_means = []
         self.attn_wts_vars = []
         self.residual = residual
         self.input_dim = input_dim
+        self.attn_drop = attn_drop
 
         xavier_init = tf.contrib.layers.xavier_initializer()
         with tf.variable_scope(self.name + '_vars'):
-            self.vars['position_embeddings'] = tf.get_variable('position_embeddings',
-                                                                   dtype=tf.float32,
-                                                                   shape=[self.num_time_steps, input_dim],
-                                                                   initializer=xavier_init)  # [T, F]
+            self.vars['position_embeddings'] = tf.get_variable(
+                'position_embeddings', dtype=tf.float32, shape=[self.num_time_steps, input_dim], initializer=xavier_init
+            )  # [T, F]
 
-            self.vars['Q_embedding_weights'] = tf.get_variable('Q_embedding_weights',
-                                                               dtype=tf.float32,
-                                                               shape=[input_dim, input_dim],
-                                                               initializer=xavier_init)  # [F, F]
-            self.vars['K_embedding_weights'] = tf.get_variable('K_embedding_weights',
-                                                               dtype=tf.float32,
-                                                               shape=[input_dim, input_dim],
-                                                               initializer=xavier_init)  # [F, F]
-            self.vars['V_embedding_weights'] = tf.get_variable('V_embedding_weights',
-                                                               dtype=tf.float32,
-                                                               shape=[input_dim, input_dim],
-                                                               initializer=xavier_init)  # [F, F]
+            self.vars['Q_embedding_weights'] = tf.get_variable(
+                'Q_embedding_weights', dtype=tf.float32, shape=[input_dim, input_dim], initializer=xavier_init
+            )  # [F, F]
+            self.vars['K_embedding_weights'] = tf.get_variable(
+                'K_embedding_weights', dtype=tf.float32, shape=[input_dim, input_dim], initializer=xavier_init
+            )  # [F, F]
+            self.vars['V_embedding_weights'] = tf.get_variable(
+                'V_embedding_weights', dtype=tf.float32, shape=[input_dim, input_dim], initializer=xavier_init
+            )  # [F, F]
 
     def call(self, inputs):
-        """ In:  attn_outputs (of StructuralAttentionLayer at each snapshot):= [N, T, F]."""
+        """In:  attn_outputs (of StructuralAttentionLayer at each snapshot):= [N, T, F]."""
         # 1: Add position embeddings to input
         position_inputs = tf.tile(tf.expand_dims(tf.range(self.num_time_steps), 0), [tf.shape(inputs)[0], 1])
-        temporal_inputs = inputs + tf.nn.embedding_lookup(self.vars['position_embeddings'],position_inputs)
+        temporal_inputs = inputs + tf.nn.embedding_lookup(self.vars['position_embeddings'], position_inputs)
         # 2: Query, Key based multi-head self attention.
         q = tf.tensordot(temporal_inputs, self.vars['Q_embedding_weights'], axes=[[2], [0]])  # [N, T, F]
         k = tf.tensordot(temporal_inputs, self.vars['K_embedding_weights'], axes=[[2], [0]])  # [N, T, F]
@@ -125,7 +142,7 @@ class DysatPtsa(Layer):
         diag_val = tf.ones_like(outputs[0, :, :])  # [T, T]
         tril = tf.contrib.linalg.LinearOperatorLowerTriangular(diag_val).to_dense()  # [T, T]
         masks = tf.tile(tf.expand_dims(tril, 0), [tf.shape(outputs)[0], 1, 1])  # [hN, T, T]
-        padding = tf.ones_like(masks) * (-2 ** 32 + 1)
+        padding = tf.ones_like(masks) * (-(2 ** 32) + 1)
         outputs = tf.where(tf.equal(masks, 0), padding, outputs)  # [h*N, T, T]
         outputs = tf.nn.softmax(outputs)  # Masked attention.
         self.attn_wts_all = outputs
@@ -133,34 +150,10 @@ class DysatPtsa(Layer):
         # 5: Dropout on attention weights.
         outputs = tf.layers.dropout(outputs, rate=self.attn_drop)
         outputs = tf.matmul(outputs, v_)  # [hN, T, C/h]
-
         split_outputs = tf.split(outputs, self.n_heads, axis=0)
         outputs = tf.concat(split_outputs, axis=-1)
 
-        # Optional: Feedforward and residual
-        if FLAGS.position_ffn:
-            outputs = self.feedforward(outputs)
-
+        # Optional: residual
         if self.residual:
             outputs += temporal_inputs
-
-        return outputs
-
-    def feedforward(self, inputs, reuse=None):
-        """Point-wise feed forward net.
-
-        Args:
-          inputs: A 3d tensor with shape of [N, T, C].
-          reuse: Boolean, whether to reuse the weights of a previous layer
-            by the same name.
-
-        Returns:
-          A 3d tensor with the same shape and dtype as inputs
-        """
-        with tf.variable_scope(self.name + '_vars', reuse=reuse):
-            inputs = tf.reshape(inputs, [-1, self.num_time_steps, self.input_dim])
-            params = {"inputs": inputs, "filters": self.input_dim, "kernel_size": 1,
-                      "activation": tf.nn.relu, "use_bias": True}
-            outputs = tf.layers.conv1d(**params)
-            outputs += inputs
         return outputs

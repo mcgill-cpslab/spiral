@@ -14,15 +14,15 @@
 # ==============================================================================
 """Datasets and dataloader for DTDG experiments."""
 
-from typing import Dict, List, Tuple
+from typing import Dict, List
 
 import numpy as np
 from numpy import ndarray
 from ogb.linkproppred import LinkPropPredDataset
 from ogb.nodeproppred import NodePropPredDataset
-import dgl
+
 from spiro.core.logger import get_logger
-from spiro.dtdg.types import CitationGraph, DiscreteGraph, Snapshot
+from spiro.dtdg.types import CitationGraph, DiscreteGraph
 
 logger = get_logger()
 

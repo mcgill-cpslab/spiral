@@ -18,7 +18,7 @@ This file define the types required for dtdg package
 """
 import copy
 from abc import ABC, abstractmethod
-from typing import List, Tuple
+from typing import List, Tuple, Dict
 
 import dgl
 import numpy as np
@@ -29,9 +29,8 @@ from numpy import ndarray
 from spiro.core import commonF
 from spiro.core.errors import DimensionError, ValueNotSortedError
 from spiro.core.logger import get_logger
-from spiro.core.utils import get_anchor_position, is_sorted
 from spiro.core.types import Tensor
-
+from spiro.core.utils import get_anchor_position, is_sorted
 
 TIME_D = 0  # position of time in nodes and edges table
 SOURCE = 1  # position of source in edges table
@@ -55,7 +54,7 @@ class Snapshot:
     in 'https://snap.stanford.edu/data/',
     """
 
-    def __init__(self, observation: DGLGraph, t: int, node_ids: ndarray=None):
+    def __init__(self, observation: DGLGraph, t: int, node_ids: ndarray = None):
         """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
         self.observation = observation
         self.t = commonF.to_tensor(np.array([t]))
@@ -151,7 +150,7 @@ class VEInvariantDTDG(DiscreteGraph):
     are created in the graph.
     """
 
-    def __init__(self, edges: ndarray, nodes: ndarray, timestamps: ndarray, node_names:ndarray=None):
+    def __init__(self, edges: ndarray, nodes: ndarray, timestamps: ndarray, node_names: ndarray = None):
         """V-E invariant DTDG is stored as an edge table,a node table an the timestamp index.
 
         Args:
@@ -192,8 +191,8 @@ class VEInvariantDTDG(DiscreteGraph):
         self.timestamps = timestamps
         self._node_time_anchors = get_anchor_position(nodes[:, TIME_D], range(len(self.timestamps)))
         self._edge_time_anchors = get_anchor_position(edges[:, TIME_D], range(len(self.timestamps)))
-        self.edge_id ={ f"{int(self.edges[i][1])}_{int(self.edges[i][2])}": i for i in range(len(self.edges))}
-        self.time_data = {}
+        self.edge_id = {f"{int(self.edges[i][1])}_{int(self.edges[i][2])}": i for i in range(len(self.edges))}
+        self.time_data:Dict = {}
 
     def dispatcher(self, t: int) -> Tuple[Snapshot, Tensor]:
         """Return a snapshot for the input time index. Time index start from 0, end at num_snapshot - 1."""
@@ -252,7 +251,7 @@ class CitationGraph(VEInvariantDTDG):
         this_nodes = observation.ndata[FEAT].numpy()
         citation = np.zeros(shape=(this_nodes.shape[0], 1))
         if t > 0:
-            previous_snapshot,_ = super().dispatcher(t - 1)
+            previous_snapshot, _ = super().dispatcher(t - 1)
             previous_citation = previous_snapshot.observation.in_degrees().numpy()
             citation[: previous_citation.shape[0], 0] = previous_citation
 

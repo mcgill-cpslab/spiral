@@ -16,10 +16,15 @@
 
 from abc import abstractmethod
 from typing import List, Tuple
+
 import tensorflow as tf
 from tensorflow.keras import layers
 
+from spiro.core.errors import DimensionError
+from spiro.core.logger import get_logger
 from spiro.core.types import MLBaseModel, Tensor, nt_layers_list
+
+logger = get_logger()
 
 
 class SimpleDecoder(MLBaseModel):
@@ -46,8 +51,14 @@ class SimpleDecoder(MLBaseModel):
 class MLP(SimpleDecoder):
     """Multi layer perceptron."""
 
-    def __init__(self, input_dim: int, embed_dims: List[int], dropout: float = 0.5, output_dim: int = 1,
-            activation: str = "linear"):
+    def __init__(
+        self,
+        input_dim: int,
+        embed_dims: List[int],
+        dropout: float = 0.5,
+        output_dim: int = 1,
+        activation: str = "linear",
+    ):
         """Init function.
 
         Args:
@@ -55,6 +66,7 @@ class MLP(SimpleDecoder):
             embed_dims: list of int, indicating the dimension or each layer.
             dropout: float, dropout rate.
             output_dim: int, number of class in output.
+            activation: str, name of the activation function. must be one supported by the tensorflow dense layer
         """
         super().__init__()
         for embed_dim in embed_dims:
@@ -80,7 +92,7 @@ class MLP(SimpleDecoder):
             mlp_h = emb
         elif ids_rank == 2:
             n_edges = ids_in.shape[0]
-            ids_id = tf.reshape(ids_in,[-1])
+            ids_id = tf.reshape(ids_in, [-1])
             mlp_h = tf.reshape(tf.gather(emb, ids_id), [n_edges, -1])
         else:
             message = f"""The index to predict in the input must be of rank 1 for node prediction or rank 2 for edge

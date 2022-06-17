@@ -45,5 +45,3 @@ class ValueError(Exception):
     def __init__(self, message):
         """Just need the error message to tell what is the error."""
         super().__init__(message)
-
-

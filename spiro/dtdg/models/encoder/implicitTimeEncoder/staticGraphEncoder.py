@@ -15,35 +15,20 @@
 """The models are adopted from https://github.com/dmlc/dgl/blob/master/examples/pytorch/gcn/gcn.py."""
 
 from abc import abstractmethod
-from typing import List, Tuple, Union
+from typing import List, Tuple
 
 from dgl import add_self_loop
 
+from spiro.core.backends import TENSORFLOW
 from spiro.core.commonF import reshape_tensor
-from spiro.core.errors import DimensionError
 from spiro.core.logger import get_logger
 from spiro.core.types import Dropout, GATConv, GraphConv, MLBaseModel, SAGEConv, SGConv, Tensor, nt_layers_list
-from spiro.dtdg.types import BatchedSnapshot, Snapshot
+from spiro.core.utils import _get_backend
+from spiro.dtdg.types import Snapshot
 
 logger = get_logger()
 
-
-def _check_mini_batch_mode(mini_batch_mode: bool, input_snapshot: Union[Snapshot, BatchedSnapshot]):
-
-    if (not mini_batch_mode) and isinstance(input_snapshot, BatchedSnapshot):
-        error_message = """
-                Please set mini batch mode to True to perform DGLBlock based batch training.
-            """
-        logger.error(error_message)
-        raise DimensionError(error_message)
-    elif mini_batch_mode and isinstance(input_snapshot, Snapshot):
-        error_message = """
-                Please set mini batch mode to False to perform non DGLBlock training.
-            """
-        logger.error(error_message)
-        raise DimensionError(error_message)
-    else:
-        return True
+this_backend = _get_backend()
 
 
 class StaticGraphEncoder(MLBaseModel):
@@ -65,7 +50,7 @@ class StaticGraphEncoder(MLBaseModel):
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
-
+            training: boolean, is it for training
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
@@ -77,23 +62,12 @@ class StaticGraphEncoder(MLBaseModel):
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
-
+            training: boolean, is it for training
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         return self.forward(in_sample, training)
-
-    def set_mini_batch(self, mini_batch: bool = True):
-        """Turn on batch training mode.
-
-        Since mini batch training with DGL requires specific support to read in DGLBlock instead of a DGLGraph,
-        we need this to control which mode the encoder is used.
-
-        Args:
-            mini_batch: bool, default True to turn on batch training mode.
-        """
-        self.mini_batch = mini_batch
 
 
 class GCN(StaticGraphEncoder):
@@ -119,11 +93,12 @@ class GCN(StaticGraphEncoder):
         # output layer
         self.dropout = Dropout(dropout)
 
-    def single_graph_forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """Forward function in normal mode.
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
+            training: boolean, is it for training
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
@@ -133,46 +108,9 @@ class GCN(StaticGraphEncoder):
         h = snapshot.node_feature()
         h = self.layers[0](g, h)
         for layer in self.layers[1:]:
-            h = self.dropout(h,training=training)
+            h = self.dropout(h, training=training)
             h = layer(g, h)
         return (h, dst_node_ids)
-
-    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List],training=False) -> Tuple[Tensor, List]:
-        """Forward function in batch mode.
-
-        Args:
-            in_sample: tuple, first entry is a BatchedSnapshot, second entry is the list[int] of targeted node ids.
-
-        Return:
-            tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
-        """
-        snapshot, dst_node_ids = in_sample
-        if snapshot.num_blocks() != self.n_layers:
-            error_message = f"""
-                The input blocked sample has {snapshot.num_blocks()},
-                but we are expecting {self.n_layers} which is the same as the number of GCN layers
-            """
-            logger.error(error_message)
-            raise DimensionError(error_message)
-        blocks = snapshot.observation
-        h = snapshot.feature
-        h = self.layers[0](blocks[0], h)
-        for i in range(1, self.n_layers):
-            h = self.dropout(h)
-            h = self.layers[i](blocks[i], h)
-        return (h, dst_node_ids)
-
-    def forward(self, _input,training=False):
-        """Forward function.
-
-        It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
-        If self.mini_batch is true, apply mini_batch_forward(). Otherwise, apply single_graph_forward().
-        """
-        _check_mini_batch_mode(self.mini_batch, _input[0])
-        if self.mini_batch:
-            return self.mini_batch_forward(_input)
-        else:
-            return self.single_graph_forward(_input, training=training)
 
 
 class SGCN(StaticGraphEncoder):
@@ -193,23 +131,19 @@ class SGCN(StaticGraphEncoder):
         self.layers.append(SGConv(in_feats, n_hidden, k=n_layers, **kwargs))
 
     # to fulfill sequential.forward it only accepts one input
-    def forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training: bool = False) -> Tuple[Tensor, List]:
         """Forward function.
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
+            training: boolean, training mode or not
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         snapshot, dst_node_ids = in_sample
-        if isinstance(snapshot, BatchedSnapshot):
-            error_message = "SGCN does not support DGLBlock based batch training."
-            logger.error(error_message)
-            raise DimensionError(error_message)
-        else:
-            g = snapshot.observation
-            h = snapshot.node_feature()
+        g = snapshot.observation
+        h = snapshot.node_feature()
         h = self.layers[0](g, h)
         return (h, dst_node_ids)
 
@@ -235,11 +169,12 @@ class GAT(StaticGraphEncoder):
             # due to multi-head, the in_dim = num_hidden * num_heads
             self.layers.append(GATConv(n_hidden * heads[i - 1], n_hidden, heads[i], **kwargs))
 
-    def single_graph_forward(self, in_sample: Tuple[Snapshot, List],training=False) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
         """Forward function in normal mode.
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
+            training: boolean, training mode or not
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
@@ -252,46 +187,11 @@ class GAT(StaticGraphEncoder):
             h = reshape_tensor(h, [-1, self.heads[i] * self.n_hidden])
         return (h, dst_node_ids)
 
-    def mini_batch_forward(self, in_sample: Tuple[BatchedSnapshot, List], training=False) -> Tuple[Tensor, List]:
-        """Forward function in batch mode.
-
-        Args:
-            in_sample: tuple, first entry is a BatchedSnapshot, second entry is the list[int] of targeted node ids.
-
-        Return:
-            tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
-        """
-        snapshot, dst_node_ids = in_sample
-        if snapshot.num_blocks() != self.n_layers:
-            error_message = f"""
-                The input blocked sample has {snapshot.num_blocks()},
-                but we are expecting {self.n_layers} which is the same as the number of GCN layers
-            """
-            logger.error(error_message)
-            raise DimensionError(error_message)
-        blocks = snapshot.observation
-        h = snapshot.feature
-        for i in range(self.n_layers):
-            h = self.layers[i](blocks[i], h)
-        return (h, dst_node_ids)
-
-    def forward(self, _input,training=False):
-        """Forward function.
-
-        It checks the self.mini_batch to see which mode the encoder is and apply the corresponding forward function.
-        If self.mini_batch is true, apply mini_batch_forward(). Otherwise, apply single_graph_forward().
-        """
-        _check_mini_batch_mode(self.mini_batch, _input[0])
-        if self.mini_batch:
-            return self.mini_batch_forward(_input, training=training)
-        else:
-            return self.single_graph_forward(_input, training=training)
-
 
 class GraphSage(StaticGraphEncoder):
     """A wrapper of DGL SAGEConv."""
 
-    def __init__(self, aggregator: str, in_feat: int, n_hidden: int, depth:int=50, **kwargs):
+    def __init__(self, aggregator: str, in_feat: int, n_hidden: int, depth: int = 50, **kwargs):
         """Create GraphSage based on SAGEConv."""
         super().__init__()
         self.depth = depth
@@ -299,25 +199,25 @@ class GraphSage(StaticGraphEncoder):
         for i in range(1, depth):
             self.layers.append(SAGEConv(n_hidden, n_hidden, aggregator, **kwargs))
 
-    def forward(self, in_sample: Tuple[Snapshot, List], training=False) -> Tuple[Tensor, List]:
+    def forward(self, in_sample: Tuple[Snapshot, List], training: bool = False) -> Tuple[Tensor, List]:
         """Forward function.
 
         Args:
             in_sample: tuple, first entry is a snapshot, second entry is the list[int] of targeted node ids.
+            training: boolean, training mode or not
 
         Return:
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         snapshot, dst_node_ids = in_sample
-        if isinstance(snapshot, BatchedSnapshot):
-            error_message = "GraphSage does not support DGLBlock based batch training."
-            logger.error(error_message)
-            raise DimensionError(error_message)
-        else:
-            g = snapshot.observation
-            h = snapshot.node_feature()
-
+        g = snapshot.observation
+        h = snapshot.node_feature()
         for layer in self.layers:
-            h_ = layer(g, h)
-
+            h = layer(g, h)
         return (h, dst_node_ids)
+
+
+# flake8: noqa
+# import backend specific models
+if this_backend == TENSORFLOW:
+    from spiro.dtdg.models.encoder.implicitTimeEncoder.tf.dysat_gat import DysatGat

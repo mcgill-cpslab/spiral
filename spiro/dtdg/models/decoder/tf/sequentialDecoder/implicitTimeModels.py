@@ -12,10 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Pytorch based sequential decoder. Designed specially for dynamic graph learning."""
+"""Tensorflow based sequential decoder. Designed specially for dynamic graph learning."""
 from typing import List, Tuple
 
-import numpy as np
 import tensorflow as tf
 from tensorflow import Tensor
 from tensorflow.keras.layers import RNN as TfRnn
@@ -24,10 +23,14 @@ from tensorflow.keras.layers import GRUCell, LSTMCell, SimpleRNNCell
 from spiro.core.commonF import to_tensor
 from spiro.core.layers import TSA, Conv1d, Time2Vec
 from spiro.core.types import nt_layers_list
-from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import BaseModel, SlidingWindowFamily, RnnFamily
-from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import NodeMemory, _process_target_ids, NodeTrackingFamily
+from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import (
+    NodeMemory,
+    NodeTrackingFamily,
+    RnnFamily,
+    SlidingWindowFamily,
+    _process_target_ids,
+)
 from spiro.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-from spiro.core.errors import DimensionError
 
 
 class LSTM(RnnFamily):
@@ -94,15 +97,16 @@ class LSTM(RnnFamily):
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
         hc = [(h[i], c[i]) for i in range(self.n_layers)]
-        out_result = self.base_model(out_sequential, initial_state=hc,training=training)
+        out_result = self.base_model(out_sequential, initial_state=hc, training=training)
         out_sequential = out_result[0]
         new_hc = out_result[1:]
         new_h = [i[0] for i in new_hc]
         new_c = [i[1] for i in new_hc]
         self.memory_h.update_memory(tf.transpose(tf.convert_to_tensor(new_h), [1, 0, 2]), ids)
         self.memory_c.update_memory(tf.transpose(tf.convert_to_tensor(new_c), [1, 0, 2]), ids)
-        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id),training=training)
+        out = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id), training=training)
         return out
+
 
 class LSTM_N(RnnFamily, NodeTrackingFamily):
     """LSTM sequential decoder."""
@@ -126,7 +130,7 @@ class LSTM_N(RnnFamily, NodeTrackingFamily):
             simple_decoder: an instance of SimpleDecoder.
         """
         RnnFamily.__init__(self, hidden_d, n_nodes, n_layers, simple_decoder)
-        NodeTrackingFamily.__init__(self,n_nodes)
+        NodeTrackingFamily.__init__(self, n_nodes)
         self.input_d = input_d
         self.base_model = TfRnn(
             [LSTMCell(hidden_d, **kwargs) for i in range(n_layers)],
@@ -171,19 +175,20 @@ class LSTM_N(RnnFamily, NodeTrackingFamily):
         h = [tf.cast(to_tensor(h_tensor), tf.float32) for h_tensor in self.memory_h.get_memory(ids)]
         c = [tf.cast(to_tensor(c_tensor), tf.float32) for c_tensor in self.memory_c.get_memory(ids)]
         hc = [(h[i], c[i]) for i in range(self.n_layers)]
-        out_result = self.base_model(out_sequential, initial_state=hc,training=training)
+        out_result = self.base_model(out_sequential, initial_state=hc, training=training)
         out_sequential = out_result[0]
         new_hc = out_result[1:]
         new_h = [i[0] for i in new_hc]
         new_c = [i[1] for i in new_hc]
         self.memory_h.update_memory(tf.transpose(tf.convert_to_tensor(new_h), [1, 0, 2]), ids)
         self.memory_c.update_memory(tf.transpose(tf.convert_to_tensor(new_c), [1, 0, 2]), ids)
-        time_mem = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id),training=training)
-        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1)) # N 1
-        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1,1)), ids)
-        combine_mem = tf.concat((time_mem, new_mem),axis=1) #N 2
+        time_mem = self.simple_decoder((tf.reshape(out_sequential, [-1, self.hidden_d]), ids_id), training=training)
+        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1))  # N 1
+        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1, 1)), ids)
+        combine_mem = tf.concat((time_mem, new_mem), axis=1)  # N 2
         out = self.output_layer(combine_mem)
         return out
+
 
 class GRU(RnnFamily):
     """GRU sequential decoder."""
@@ -272,7 +277,7 @@ class SelfAttention(SlidingWindowFamily):
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
 
-    def call(self, in_state: Tuple[Tensor, Tensor],training=False) -> Tensor:
+    def call(self, in_state: Tuple[Tensor, Tensor], training=False) -> Tensor:
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
         # sequence length = 1
@@ -336,16 +341,12 @@ class PTSA(SlidingWindowFamily):
         input_windows = tf.convert_to_tensor(
             self.memory.get_memory(ids), dtype=tf.float32
         )  # N, W, D N serve as batch size in this case
-        Q = input_windows
         K = input_windows + self.positional_embedding
         for layer in self.nn_layers:
             K = layer(K, K, K, training=training)
-        last_sequence = tf.slice(
-            K, [0, self.window_size - 1, 0], [K.shape[0], 1, K.shape[2]]
-        )
+        last_sequence = tf.slice(K, [0, self.window_size - 1, 0], [K.shape[0], 1, K.shape[2]])
         out = self.simple_decoder((tf.reshape(last_sequence, [-1, K.shape[2]]), ids_id), training=training)
         return out
-
 
 
 class NodeTrackingPTSA(SlidingWindowFamily, NodeTrackingFamily):
@@ -371,8 +372,8 @@ class NodeTrackingPTSA(SlidingWindowFamily, NodeTrackingFamily):
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
-        SlidingWindowFamily.__init__(self,input_d, n_nodes, window_size, simple_decoder)
-        NodeTrackingFamily.__init__(self,n_nodes)
+        SlidingWindowFamily.__init__(self, input_d, n_nodes, window_size, simple_decoder)
+        NodeTrackingFamily.__init__(self, n_nodes)
         self.nn_layers = nt_layers_list()
         self.output_dim = embed_dims[-1]
         for emb in embed_dims:
@@ -380,6 +381,7 @@ class NodeTrackingPTSA(SlidingWindowFamily, NodeTrackingFamily):
         self.positional_embedding = tf.Variable(tf.random.uniform([window_size, input_d], dtype=tf.float32))
 
     def reset_memory_state(self):
+        """Reset all memory."""
         SlidingWindowFamily.reset_memory_state(self)
         NodeTrackingFamily.reset_node_memory(self)
 
@@ -397,20 +399,17 @@ class NodeTrackingPTSA(SlidingWindowFamily, NodeTrackingFamily):
         input_windows = tf.convert_to_tensor(
             self.memory.get_memory(ids), dtype=tf.float32
         )  # N, W, D N serve as batch size in this case
-        Q = input_windows
         K = input_windows + self.positional_embedding
         for layer in self.nn_layers:
             K = layer(K, K, K, training=training)
-        last_sequence = tf.slice(
-            K, [0, self.window_size - 1, 0], [K.shape[0], 1, K.shape[2]]
-        )
-        time_mem = tf.reshape(last_sequence, [-1, K.shape[2]]) # N D
-        time_mem = self.simple_decoder((time_mem, ids_id), training=training) # N 1
-        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1)) # N 1
-        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1,1)), ids)
-        combine_mem = tf.concat((time_mem, new_mem),axis=1) #N 2
+        last_sequence = tf.slice(K, [0, self.window_size - 1, 0], [K.shape[0], 1, K.shape[2]])
+        time_mem = tf.reshape(last_sequence, [-1, K.shape[2]])  # N D
+        time_mem = self.simple_decoder((time_mem, ids_id), training=training)  # N 1
+        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1))  # N 1
+        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1, 1)), ids)
+        combine_mem = tf.concat((time_mem, new_mem), axis=1)  # N 2
         out = self.output_layer(combine_mem)
-        #out = self.simple_decoder((combine_mem,ids_id),training=training)
+        # out = self.simple_decoder((combine_mem,ids_id),training=training)
         return out
 
 
@@ -423,7 +422,7 @@ def FTSA(
     time_kernel: int,
     time_agg: str,
     simple_decoder: SimpleDecoder,
-    node_tracking:bool = False,
+    node_tracking: bool = False,
     **kwargs,
 ) -> SlidingWindowFamily:
     """Factory function to return the corresponding FTSA decoder."""
@@ -432,7 +431,9 @@ def FTSA(
         model = FTSAConcate(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
     elif time_agg == 'sum':
         if node_tracking:
-            model = NodeTrackingFTSASum(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
+            model = NodeTrackingFTSASum(
+                num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs
+            )
         else:
             model = FTSASum(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
     return model
@@ -467,7 +468,7 @@ class FTSAConcate(SlidingWindowFamily):
         self.nn_layers = nt_layers_list()
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
-        self.time2vec = Time2Vec(time_kernel,1, **kwargs)
+        self.time2vec = Time2Vec(time_kernel, 1, **kwargs)
         self.time_dimention = tf.range(window_size, dtype=tf.float32)
         self.time_kernel = time_kernel
         self.input_d = input_d
@@ -501,7 +502,9 @@ class FTSAConcate(SlidingWindowFamily):
         last_sequence = tf.slice(
             input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
         )
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id), training=training)
+        out = self.simple_decoder(
+            (tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id), training=training
+        )
         return out
 
 
@@ -539,12 +542,10 @@ class FTSASum(SlidingWindowFamily):
         self.time_kernel = time_kernel
         self.feature_size = input_d
 
-
     def build(self, input_shape):
         """Initiate model weights."""
         self.wk = self.add_weight(shape=(self.time_kernel, 1), initializer='uniform', trainable=True)
 
-    
     def call(self, in_state: Tuple[Tensor, Tensor], training=False):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -555,7 +556,7 @@ class FTSASum(SlidingWindowFamily):
         ids, ids_id = _process_target_ids(ids_in)
         node_embs = tf.gather(node_embs, ids)
         self.memory.update_window(node_embs.numpy(), ids)
-        
+
         input_windows = tf.convert_to_tensor(
             self.memory.get_memory(ids), dtype=tf.float32
         )  # N, W, D N serve as batch size in this case
@@ -608,7 +609,7 @@ class NodeTrackingFTSAConcate(SlidingWindowFamily):
         self.nn_layers = nt_layers_list()
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
-        self.time2vec = Time2Vec(time_kernel,1, **kwargs)
+        self.time2vec = Time2Vec(time_kernel, 1, **kwargs)
         self.time_dimention = tf.range(window_size, dtype=tf.float32)
         self.time_kernel = time_kernel
         self.input_d = input_d
@@ -621,9 +622,10 @@ class NodeTrackingFTSAConcate(SlidingWindowFamily):
         super().build(input_shape)
 
     def reset_memory_state(self):
+        """Reset all memory."""
         SlidingWindowFamily.reset_memory_state(self)
         NodeTrackingFamily.reset_node_memory(self)
-    
+
     def call(self, in_state: Tuple[Tensor, Tensor], training=False):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -646,7 +648,9 @@ class NodeTrackingFTSAConcate(SlidingWindowFamily):
         last_sequence = tf.slice(
             input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
         )
-        out = self.simple_decoder((tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id), training=training)
+        out = self.simple_decoder(
+            (tf.reshape(last_sequence, [-1, input_with_time.shape[2]]), ids_id), training=training
+        )
         return out
 
 
@@ -675,8 +679,8 @@ class NodeTrackingFTSASum(SlidingWindowFamily, NodeTrackingFamily):
             time_kernel: int, kernel size of the time2vec embedding
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
-        SlidingWindowFamily.__init__(self,input_d, n_nodes, window_size, simple_decoder)
-        NodeTrackingFamily.__init__(self,n_nodes)
+        SlidingWindowFamily.__init__(self, input_d, n_nodes, window_size, simple_decoder)
+        NodeTrackingFamily.__init__(self, n_nodes)
         self.nn_layers = nt_layers_list()
         self.output_dim = embed_dims[-1]
         for emb in embed_dims:
@@ -686,12 +690,12 @@ class NodeTrackingFTSASum(SlidingWindowFamily, NodeTrackingFamily):
         self.time_kernel = time_kernel
         self.feature_size = input_d
 
-
     def build(self, input_shape):
         """Initiate model weights."""
         self.wk = self.add_weight(shape=(self.time_kernel, 1), initializer='uniform', trainable=True)
 
     def reset_memory_state(self):
+        """Reset all memory."""
         SlidingWindowFamily.reset_memory_state(self)
         NodeTrackingFamily.reset_node_memory(self)
 
@@ -706,7 +710,7 @@ class NodeTrackingFTSASum(SlidingWindowFamily, NodeTrackingFamily):
         node_embs = tf.gather(node_embs, ids)
         old_mem = tf.reshape(tf.cast(to_tensor(self.memory_node.get_memory(ids)), tf.float32), (node_embs.shape[0], 1))
         self.memory.update_window(node_embs.numpy(), ids)
-        
+
         input_windows = tf.convert_to_tensor(
             self.memory.get_memory(ids), dtype=tf.float32
         )  # N, W, D N serve as batch size in this case
@@ -724,11 +728,11 @@ class NodeTrackingFTSASum(SlidingWindowFamily, NodeTrackingFamily):
         last_sequence = tf.slice(
             input_with_time, [0, self.window_size - 1, 0], [input_with_time.shape[0], 1, input_with_time.shape[2]]
         )
-        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1)) # N 1
-        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1,1)), ids)
-        time_mem = tf.reshape(last_sequence, [-1, self.output_dim]) # N D
-        time_mem = self.simple_decoder((time_mem, ids_id), training=training) # N 1
-        combine_mem = tf.concat((time_mem, new_mem),axis=1) #N 2
+        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1))  # N 1
+        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1, 1)), ids)
+        time_mem = tf.reshape(last_sequence, [-1, self.output_dim])  # N D
+        time_mem = self.simple_decoder((time_mem, ids_id), training=training)  # N 1
+        combine_mem = tf.concat((time_mem, new_mem), axis=1)  # N 2
         out = self.output_layer(combine_mem)
         return out
 
@@ -761,7 +765,6 @@ class Conv1D(SlidingWindowFamily):
         for i in range(1, len(embed_dims)):
             self.nn_layers.append(Conv1d(embed_dims[i - 1], embed_dims[i], window_size, **kwargs))
 
-    
     def call(self, in_state: Tuple[Tensor, Tensor], training=False):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -806,17 +809,18 @@ class Conv1D_N(SlidingWindowFamily, NodeTrackingFamily):
             window_size: int, the length of the sliding window
             simple_decoder: SimpleDecoder, the outputing simple decoder.
         """
-        SlidingWindowFamily.__init__(self,input_d, n_nodes, window_size, simple_decoder)
-        NodeTrackingFamily.__init__(self,n_nodes)
+        SlidingWindowFamily.__init__(self, input_d, n_nodes, window_size, simple_decoder)
+        NodeTrackingFamily.__init__(self, n_nodes)
         self.nn_layers = nt_layers_list()
         self.nn_layers.append(Conv1d(input_d, embed_dims[0], window_size, **kwargs))
         for i in range(1, len(embed_dims)):
             self.nn_layers.append(Conv1d(embed_dims[i - 1], embed_dims[i], window_size, **kwargs))
 
     def reset_memory_state(self):
+        """Reset all memory."""
         SlidingWindowFamily.reset_memory_state(self)
         NodeTrackingFamily.reset_node_memory(self)
-    
+
     def call(self, in_state: Tuple[Tensor, Tensor], training=False):
         """Forward function."""
         # node_embs: [|V|, |hidden_dim|]
@@ -837,8 +841,8 @@ class Conv1D_N(SlidingWindowFamily, NodeTrackingFamily):
             current = tf.identity(new_current)
         last_sequence = tf.slice(current, [0, self.window_size - 1, 0], [current.shape[0], 1, current.shape[2]])
         time_mem = self.simple_decoder((tf.reshape(last_sequence, [-1, current.shape[2]]), ids_id), training=training)
-        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1)) # N 1
-        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1,1)), ids)
-        combine_mem = tf.concat((time_mem, new_mem),axis=1) #N 2
+        new_mem = self.memory_layer(tf.concat((old_mem, node_embs), axis=1))  # N 1
+        self.memory_node.update_memory(tf.reshape(new_mem, (node_embs.shape[0], 1, 1)), ids)
+        combine_mem = tf.concat((time_mem, new_mem), axis=1)  # N 2
         out = self.output_layer(combine_mem)
         return out
