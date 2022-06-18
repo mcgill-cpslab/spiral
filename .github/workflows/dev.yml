@@ -39,7 +39,7 @@ jobs:
 
       - name: test with tox
         run:
-          poetry run tox
+          tox
 
       - name: list files
         run: ls -l .
