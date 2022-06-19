@@ -31,7 +31,7 @@ from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import (
     _process_target_ids,
 )
 from spiro.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-
+from spiro.core.errors import ValueError
 
 class LSTM(RnnFamily):
     """LSTM sequential decoder."""
@@ -142,7 +142,8 @@ class LSTM_N(RnnFamily, NodeTrackingFamily):
 
     def get_weights(self):
         """Get model weights."""
-        weights = super().get_weights()
+        weights = RnnFamily.get_weights(self)
+        weights.append(NodeTrackingFamily.get_weights(self))
         weights.append(self.memory_c.memory)
         return weights
 
@@ -152,8 +153,9 @@ class LSTM_N(RnnFamily, NodeTrackingFamily):
         Args:
             weights: List[np.ndarray], value for new weights.
         """
-        super().set_weights(weights)
-        self.memory_c.memory = weights[3]
+        RnnFamily.set_weights(self,weights)
+        NodeTrackingFamily.set_weights(self,weights[3])
+        self.memory_c.memory = weights[4]
 
     def reset_memory_state(self):
         """Reset the node memory for hidden states."""
@@ -427,15 +429,19 @@ def FTSA(
 ) -> SlidingWindowFamily:
     """Factory function to return the corresponding FTSA decoder."""
     model = None
-    if time_agg == 'concate':
+    sum_ = "sum"
+    concate_ = "concate"
+    if time_agg == concate_:
         model = FTSAConcate(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
-    elif time_agg == 'sum':
+    elif time_agg == sum_:
         if node_tracking:
             model = NodeTrackingFTSASum(
                 num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs
             )
         else:
             model = FTSASum(num_heads, input_d, embed_dims, n_nodes, window_size, time_kernel, simple_decoder, **kwargs)
+    else:
+        raise ValueError(f"the input value of argument time_agg can only be {sum_} or {concate_}")
     return model
 
 
@@ -469,7 +475,7 @@ class FTSAConcate(SlidingWindowFamily):
         for emb in embed_dims:
             self.nn_layers.append(TSA(out_dim=emb, num_heads=num_heads, **kwargs))
         self.time2vec = Time2Vec(time_kernel, 1, **kwargs)
-        self.time_dimention = tf.range(window_size, dtype=tf.float32)
+        self.time_dimention = tf.reshape(tf.range(window_size, dtype=tf.float32), [1, -1])
         self.time_kernel = time_kernel
         self.input_d = input_d
 
@@ -788,7 +794,7 @@ class Conv1D(SlidingWindowFamily):
 
 
 class Conv1D_N(SlidingWindowFamily, NodeTrackingFamily):
-    """1-D convolutional network decoder."""
+    """1-D convolutional network decoder with Node memory layer."""
 
     def __init__(
         self,

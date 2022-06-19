@@ -14,10 +14,10 @@
 # ==============================================================================
 """Assemble a dynamic graph learning model."""
 import os
-
 import numpy
 from tensorflow import keras
-
+from spiro.core.logger import get_logger
+logger = get_logger()
 
 class Assembler(keras.Model):
     """Assembler combines encoder and decoder to create a dynamic graph learner."""
