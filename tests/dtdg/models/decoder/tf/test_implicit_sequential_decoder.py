@@ -314,7 +314,7 @@ def test_sa():
 
 
 def test_ptsa():
-    """Test GRU"""
+    """Test PTSA"""
     clear_background()
     from spiro.core.backend_config import tensorflow
     from spiro.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import PTSA
@@ -377,7 +377,7 @@ def test_ptsa_n():
     """Test ptsa with node memory"""
     clear_background()
     from spiro.core.backend_config import tensorflow
-    from spiro.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import NodeTrackingPTSA
+    from spiro.dtdg.models.decoder.tf.sequentialDecoder.implicitTimeModels import PTSA
     from spiro.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
     from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import SGCN
     from spiro.automl.tf.prepare_dataset import prepare_citation_task, TARGET, LABEL
@@ -394,7 +394,7 @@ def test_ptsa_n():
 
     gnn = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True)
     output_decoder = MLP(output_dim, [hidden_dim,20,10,5], activation="linear")
-    sa = NodeTrackingPTSA( 2, hidden_dim, [2,output_dim], n_nodes, 2, output_decoder)
+    sa = PTSA( 2, hidden_dim, [2,output_dim], n_nodes, 2, output_decoder, node_tracking=True)
     this_model = assembler(gnn, sa)
     save_path = "model_lstm"
     loss_fn = keras.losses.MeanAbsolutePercentageError()
@@ -423,7 +423,7 @@ def test_ptsa_n():
 
     gnn2 = SGCN(num_GNN_layers, in_dim, hidden_dim ,allow_zero_in_degree=True)
     output_decoder2 = MLP(output_dim, [hidden_dim,20,10,5], activation="linear")
-    sa2 = NodeTrackingPTSA( 2, hidden_dim, [2,output_dim], n_nodes, 2, output_decoder)
+    sa2 = PTSA( 2, hidden_dim, [2,output_dim], n_nodes, 2, output_decoder, node_tracking=True)
     this_model2 = assembler(gnn2, sa2)
     this_model2((this_snapshot,this_graph.time_data[TARGET][t]))
     this_model2.load_model(save_path)

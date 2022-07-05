@@ -302,7 +302,7 @@ class SelfAttention(SlidingWindowFamily):
         return out
 
 
-class PTSA(SlidingWindowFamily):
+class NaivePTSA(SlidingWindowFamily):
     """Positional Temporal self-attention (SA) decoder."""
 
     def __init__(
@@ -414,6 +414,26 @@ class NodeTrackingPTSA(SlidingWindowFamily, NodeTrackingFamily):
         out = self.output_layer(combine_mem)
         # out = self.simple_decoder((combine_mem,ids_id),training=training)
         return out
+
+
+def PTSA(
+    num_heads: int,
+    input_d: int,
+    embed_dims: List[int],
+    n_nodes: int,
+    window_size: int,
+    simple_decoder: SimpleDecoder,
+    node_tracking: bool = False,
+    **kwargs,
+) -> SlidingWindowFamily:
+    """Factory function to return the corresponding FTSA decoder."""
+    model = None
+    if node_tracking:
+        model = NodeTrackingPTSA(num_heads, input_d, embed_dims, n_nodes, window_size, simple_decoder, **kwargs)
+    else:
+        model = NaivePTSA(num_heads, input_d, embed_dims, n_nodes, window_size, simple_decoder, **kwargs)
+
+    return model
 
 
 def FTSA(
