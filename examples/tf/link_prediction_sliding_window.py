@@ -1,24 +1,22 @@
+"""
+For link prediction, the target id list in the input should be a list of tuples, each tuple represent an edge with the
+first to be the source and the second to be the destination.
+"""
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
 import logging
 import datetime
-from nineturn.core.backends import TENSORFLOW
-from nineturn.core.config import  set_backend
-set_backend(TENSORFLOW)
-from nineturn.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
-from nineturn.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
-from nineturn.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D
-from nineturn.dtdg.models.decoder.simpleDecoders import MLP
-from nineturn.core.commonF import to_tensor
-from nineturn.automl.model_assembler import assembler
-from nineturn.automl.tf.prepare_dataset import prepare_edge_task, TARGET, LABEL
+from spiro.core.backend_config import tensorflow
+from spiro.dtdg.dataloader import ogb_dataset, supported_ogb_datasets
+from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import GCN, SGCN, GAT, GraphSage
+from spiro.dtdg.models.decoder.sequentialDecoders import SelfAttention, PTSA, FTSA, Conv1D
+from spiro.dtdg.models.decoder.simpleDecoders import MLP
+from spiro.core.commonF import to_tensor
+from spiro.automl.model_assembler import assembler
+from spiro.automl.tf.prepare_dataset import prepare_edge_task, TARGET, LABEL
 from ogb.linkproppred import Evaluator
 
-"""
-def loss_fn(predict, label):
-    return torch.sqrt(torch.mean(torch.abs(torch.log1p(predict) - torch.log1p(label))))
-"""
 if __name__ == '__main__':
     #----------------------------------------------------------------
     data_to_test = supported_ogb_datasets()[1]

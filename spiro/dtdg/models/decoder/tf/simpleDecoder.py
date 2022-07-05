@@ -81,7 +81,8 @@ class MLP(SimpleDecoder):
 
         Args:
             in_state: tuple, first entry is either a nodes embedding or the hidden representation from a sequential
-                       decoder, second entry is the list[int] of targeted node ids.
+                       decoder, second entry is the list[int] of targeted node ids or a list[[int, int]] for edge
+                       prediction.
 
         Return:
             prediction: Tensor
