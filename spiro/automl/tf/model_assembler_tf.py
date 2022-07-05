@@ -14,10 +14,16 @@
 # ==============================================================================
 """Assemble a dynamic graph learning model."""
 import os
+
 import numpy
 from tensorflow import keras
+
+from spiro.core.errors import ValueError
 from spiro.core.logger import get_logger
+from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import DysatGat
+
 logger = get_logger()
+
 
 class Assembler(keras.Model):
     """Assembler combines encoder and decoder to create a dynamic graph learner."""
@@ -43,14 +49,16 @@ class Assembler(keras.Model):
         """Save the model into the input path."""
         if not os.path.exists(path):
             os.mkdir(path)
-        encoder_weights = self.encoder.get_weights()
+        if self.encoder.has_weights():
+            encoder_weights = self.encoder.get_weights()
+            numpy.save(f"{path}/encoder", encoder_weights)
         decoder_weights = self.decoder.get_weights()
-        numpy.save(f"{path}/encoder", encoder_weights)
         numpy.save(f"{path}/decoder", decoder_weights)
 
     def load_model(self, path):
         """Load encoder-decoder model from path."""
-        encoder_weights = numpy.load(f"{path}/encoder.npy", allow_pickle=True)
-        self.encoder.set_weights(encoder_weights)
+        if self.encoder.has_weights():
+            encoder_weights = numpy.load(f"{path}/encoder.npy", allow_pickle=True)
+            self.encoder.set_weights(encoder_weights)
         decoder_weights = numpy.load(f"{path}/decoder.npy", allow_pickle=True)
         self.decoder.set_weights(decoder_weights)

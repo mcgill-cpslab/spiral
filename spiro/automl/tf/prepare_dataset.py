@@ -19,7 +19,7 @@ from typing import List, Tuple
 import numpy as np
 import tensorflow as tf
 
-from spiro.core.commonF import to_tensor
+from spiro.core.commonF import reshape_tensor, to_tensor
 from spiro.core.dataio import neg_sampling
 from spiro.core.errors import DimensionError
 from spiro.dtdg.types import CitationGraph, Snapshot, VEInvariantDTDG
@@ -56,7 +56,19 @@ def edge_sample(
 def prepare_edge_task(
     dgraph: VEInvariantDTDG, num_postive: int, num_negative: int = None, start_t: int = 1, negative_label: int = 0
 ):
-    """Prepare dataset for edge focus task."""
+    """Prepare dataset for edge focus task.
+
+    After the preparation, the input dynamic graph's time_data will have two populated fields: target and label.
+    target is the links to predict. Each edge is a pair of node ids. The label indicates whether the target edge exist
+    or not in the corresponding time.
+
+    Args:
+        dgraph: an instance of VEInvariantDTDG.
+        num_postive: int, number of positive edge per node
+        num_negative: int, default None would be the same as num_postive. Number of negative edges per node
+        start_t: int, default 1. the starting time index to prepare
+        negative_label: int, the label for negative samples, the positive sample's label is 1.
+    """
     times = len(dgraph)
     dgraph.time_data[TARGET] = {}
     dgraph.time_data[LABEL] = {}
@@ -96,8 +108,8 @@ def prepare_citation_task(
         target = np.where(later_5.node_feature().numpy()[node_samples, -1] > minimum_citation)
         new_citation = next_snapshot.node_feature()[: this_snapshot.num_nodes(), -1]
         label = to_tensor(new_citation.numpy()[(target)])
-        dgraph.time_data[TARGET][t] = tf.reshape(to_tensor(target, dtype=tf.int32), [-1])
-        dgraph.time_data[LABEL][t] = tf.reshape(label, [-1])
+        dgraph.time_data[TARGET][t] = reshape_tensor(to_tensor(target, dtype=tf.int32), [-1])
+        dgraph.time_data[LABEL][t] = reshape_tensor(label, [-1])
 
     target = dgraph.time_data[TARGET][times - 2 - validating_snapshots].numpy()
     for t in range(times - validating_snapshots - 1, times - 1):
@@ -105,5 +117,5 @@ def prepare_citation_task(
         next_snapshot, _ = dgraph.dispatcher(t + 1)
         new_citation = next_snapshot.node_feature()[: this_snapshot.num_nodes(), -1]
         label = new_citation.numpy()[(target)]
-        dgraph.time_data[TARGET][t] = tf.reshape(to_tensor(target, tf.int32), -1)
-        dgraph.time_data[LABEL][t] = tf.reshape(label, -1)
+        dgraph.time_data[TARGET][t] = reshape_tensor(to_tensor(target, tf.int32), -1)
+        dgraph.time_data[LABEL][t] = reshape_tensor(label, -1)

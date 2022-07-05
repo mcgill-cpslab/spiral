@@ -17,6 +17,7 @@
 from abc import abstractmethod
 from typing import List, Tuple
 
+import numpy as np
 from dgl import add_self_loop
 
 from spiro.core.backends import TENSORFLOW
@@ -68,6 +69,9 @@ class StaticGraphEncoder(MLBaseModel):
             tuple of node-wise embedding for the targeted ids and the list of targeted node ids.
         """
         return self.forward(in_sample, training)
+
+    def has_weights(self) -> bool:
+        return True
 
 
 class GCN(StaticGraphEncoder):
@@ -216,8 +220,12 @@ class GraphSage(StaticGraphEncoder):
             h = layer(g, h)
         return (h, dst_node_ids)
 
+    def has_weights(self) -> bool:
+        logger.info("GraphSage has not trainable weights.")
+        return True
+
 
 # flake8: noqa
 # import backend specific models
 if this_backend == TENSORFLOW:
-    from spiro.dtdg.models.encoder.implicitTimeEncoder.tf.dysat_gat import DysatGat
+    from spiro.dtdg.models.encoder.implicitTimeEncoder.tf.dysat_gat import DysatGat as DysatGat

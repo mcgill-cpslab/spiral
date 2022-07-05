@@ -254,7 +254,7 @@ class NodeTrackingFamily:
     def reset_node_memory(self):
         """Reset the node memory."""
         self.memory_node.reset_state()
-    
+
     def get_weights(self) -> List[Ndarray]:
         """Return the value of trainable weights."""
         return [self.memory_layer.get_weights(), self.output_layer.get_weights(), self.memory_node.memory]

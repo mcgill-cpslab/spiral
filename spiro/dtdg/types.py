@@ -108,20 +108,6 @@ class Snapshot:
         return ret
 
 
-class BatchedSnapshot:
-    """Mainly to support mini batch training with dgl."""
-
-    def __init__(self, observation: List[DGLGraph], feature, t: int):
-        """A snapshot of a DTDG composed by an instance of DGLGraph as observation and an integer as timestamp."""
-        self.observation = observation
-        self.t = t
-        self.feature = feature
-
-    def num_blocks(self) -> int:
-        """Return the number of DGLBlocks in the BatchedSnapshot."""
-        return len(self.observation)
-
-
 class DiscreteGraph(ABC):
     """This is an abstract class for Discrete Time Dynamic Graph collection.
 

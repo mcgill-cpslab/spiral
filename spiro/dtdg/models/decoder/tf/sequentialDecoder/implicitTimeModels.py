@@ -21,6 +21,7 @@ from tensorflow.keras.layers import RNN as TfRnn
 from tensorflow.keras.layers import GRUCell, LSTMCell, SimpleRNNCell
 
 from spiro.core.commonF import to_tensor
+from spiro.core.errors import ValueError
 from spiro.core.layers import TSA, Conv1d, Time2Vec
 from spiro.core.types import nt_layers_list
 from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import (
@@ -31,7 +32,7 @@ from spiro.dtdg.models.decoder.tf.sequentialDecoder.baseModel import (
     _process_target_ids,
 )
 from spiro.dtdg.models.decoder.tf.simpleDecoder import SimpleDecoder
-from spiro.core.errors import ValueError
+
 
 class LSTM(RnnFamily):
     """LSTM sequential decoder."""
@@ -153,8 +154,8 @@ class LSTM_N(RnnFamily, NodeTrackingFamily):
         Args:
             weights: List[np.ndarray], value for new weights.
         """
-        RnnFamily.set_weights(self,weights)
-        NodeTrackingFamily.set_weights(self,weights[3])
+        RnnFamily.set_weights(self, weights)
+        NodeTrackingFamily.set_weights(self, weights[3])
         self.memory_c.memory = weights[4]
 
     def reset_memory_state(self):

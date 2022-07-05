@@ -20,6 +20,7 @@ networks." Proceedings of the 13th international conference on web search and da
 
 from typing import List, Tuple
 
+from spiro.core.errors import ValueError
 from spiro.core.tf.structualAttention import StructuralAttentionLayer
 from spiro.core.types import Tensor
 from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import StaticGraphEncoder
@@ -65,3 +66,6 @@ class DysatGat(StaticGraphEncoder):
         for layer in self.layers[1:]:
             h = layer(g, h)
         return (h, dst_node_ids)
+
+    def get_weights(self):
+        raise ValueError("Save and load model is not supported for Dysat.")
