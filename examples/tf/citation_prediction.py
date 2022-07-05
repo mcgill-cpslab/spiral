@@ -1,3 +1,6 @@
+"""
+Code to repeat the experiment in the paper: introducing Node Memory into Discrete Time Dynamic Graph Learning
+"""
 import numpy as np
 import tensorflow as tf
 from tensorflow import keras
