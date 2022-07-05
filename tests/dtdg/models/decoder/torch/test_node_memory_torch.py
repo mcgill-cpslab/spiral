@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # flake8: noqa
-"""Tests `nineturn.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels` package."""
+"""Tests `spiro.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels` package."""
 import torch
 from tests.core.common_functions import *
 
@@ -8,10 +8,10 @@ from tests.core.common_functions import *
 def test_node_memory_torch():
     """Test NodeMemory"""
     clear_background()
-    from nineturn.core.config import set_backend
-    from nineturn.core.backends import PYTORCH
+    from spiro.core.config import set_backend
+    from spiro.core.backends import PYTORCH
     set_backend(PYTORCH)
-    from nineturn.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels import NodeMemory
+    from spiro.dtdg.models.decoder.torch.sequentialDecoder.implicitTimeModels import NodeMemory
 
     n_nodes = 5
     hidden_d = 2

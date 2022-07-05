@@ -1,6 +1,6 @@
 [tool]
 [tool.poetry]
-name = "nineturn"
+name = "spirograph"
 version = "0.0.0"
 homepage = "https://github.com/mcgill-cpslab/spiral"
 description = "A tool to help building ML pipeline easier for non technical users.."
@@ -19,7 +19,7 @@ classifiers=[
 ]
 
 packages = [
-    { include = "nineturn" },
+    { include = "spiro" },
     { include = "tests", format = "sdist" },
 ]
 
@@ -31,13 +31,16 @@ black  = { version = "^21.5b2", optional = true}
 isort  = { version = "^5.8.0", optional = true}
 flake8  = { version = "^3.9.2", optional = true}
 flake8-docstrings = { version = "^1.6.0", optional = true }
-mypy = {version = "^0.900", optional = true}
+mypy = "0.961"
 pytest  = { version = "^6.2.4", optional = true}
 pytest-cov  = { version = "^2.12.0", optional = true}
 tox  = { version = "^3.20.1", optional = true}
 virtualenv  = { version = "^20.2.2", optional = true}
 pip  = { version = "^20.3.1", optional = true}
-mkdocs  = { version = "^1.1.2", optional = true}
+jinja2 = {version="3.0.0", optional = true}
+pygments = {version="2.11.0", optional=true}
+#pymdown-extensions = {version="9.3", optional = true}
+mkdocs = {version="1.2.3", optional = true}
 mkdocs-include-markdown-plugin  = { version = "^1.0.0", optional = true}
 mkdocs-material  = { version = "^6.1.7", optional = true}
 mkdocstrings  = { version = "^0.15.2", optional = true}
@@ -47,11 +50,13 @@ mkdocs-autorefs = {version = "^0.2.1", optional = true}
 pre-commit = {version = "^2.12.0", optional = true}
 toml = {version = "^0.10.2", optional = true}
 bump2version = {version = "^1.0.1", optional = true}
-dgl = {version = ">=0.6, <= 0.8", optional = true}
+dgl = {version = ">=0.6, < 0.9", optional = true}
 py7zr = {version = "^0.17", optional = true}
 torch = {version="1.10.2", optional=true}
-tensorflow = {version=">=2.7.1, <=2.8",optional=true}
+tensorflow = {version=">=2.7.0, <2.9",optional=true}
 ogb = "^1.3.2"
+pyspark = "^3.2.1"
+findspark = "^2.0.1"
 
 [tool.poetry.extras]
 test = [
@@ -67,6 +72,7 @@ test = [
 dev = ["tox", "pre-commit", "virtualenv", "pip", "twine", "toml", "bump2version","py7zr", "torch", "tensorflow"]
 
 doc = [
+    "jinja2",
     "mkdocs",
     "mkdocs-include-markdown-plugin",
     "mkdocs-material",

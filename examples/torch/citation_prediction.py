@@ -33,9 +33,9 @@ if __name__ == '__main__':
     this_graph = ogb_dataset(data_to_test)
     n_snapshot = len(this_graph)
     this_logger.info(f"number of snapshots: {n_snapshot}")
-    n_nodes = this_graph.dispatcher(n_snapshot -1).observation.num_nodes()
+    n_nodes = this_graph.dispatcher(n_snapshot -1)[0].observation.num_nodes()
     this_logger.info(f"number of nodes: {n_nodes}")
-    this_snapshot = this_graph.dispatcher(20)
+    this_snapshot,_ = this_graph.dispatcher(20)
     in_dim = this_snapshot.num_node_features()
     hidden_dim = 32
     num_GNN_layers = 2
@@ -90,8 +90,8 @@ if __name__ == '__main__':
                     for t in range(5,n_snapshot-2):
                         this_model.train()
                         optimizer.zero_grad()
-                        this_snapshot = this_graph.dispatcher(t)
-                        next_snapshot = this_graph.dispatcher(t+1)
+                        this_snapshot, node_samples = this_graph.dispatcher(t)
+                        next_snapshot,_ = this_graph.dispatcher(t+1)
                         node_samples = torch.arange(this_snapshot.num_nodes())
                         predict = this_model.forward((this_snapshot, node_samples))
                         label = next_snapshot.node_feature()[:this_snapshot.num_nodes(), -1].float()
