@@ -14,13 +14,9 @@
 # ==============================================================================
 """Assemble a dynamic graph learning model."""
 import os
-
 import numpy
 from tensorflow import keras
-
-from spiro.core.errors import ValueError
 from spiro.core.logger import get_logger
-from spiro.dtdg.models.encoder.implicitTimeEncoder.staticGraphEncoder import DysatGat
 
 logger = get_logger()
 
