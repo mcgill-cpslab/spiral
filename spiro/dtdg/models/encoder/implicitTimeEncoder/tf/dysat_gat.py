@@ -68,5 +68,5 @@ class DysatGat(StaticGraphEncoder):
         return (h, dst_node_ids)
 
     def get_weights(self):
-        """We don't support model saving for dysat yet"""
+        """We don't support model saving for dysat yet."""
         raise ValueError("Save and load model is not supported for Dysat.")
