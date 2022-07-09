@@ -1,5 +1,7 @@
 # Changelog
 
-## 0.0.0 (2021-10-28)
+## v0.1.0 (2021-10-28)
 
-* First release on PyPI.
+* beta release
+* some classic DTDG learning models
+* code to reproduce result in paper "Introducing Node Memory into Discrete Time Dynamic Graph Learning"
