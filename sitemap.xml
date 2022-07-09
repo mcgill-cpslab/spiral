@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/api/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/changelog/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/contributing/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/installation/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+    <url>
+         <loc>https://github.com/mcgill-cpslab/spiral/usage/</loc>
+         <lastmod>2022-07-09</lastmod>
+         <changefreq>daily</changefreq>
+    </url>
+</urlset>
