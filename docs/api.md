@@ -1,2 +1,2 @@
-#nineturn.core.config module
-:::nineturn.core.config
+#spiro.core.config module
+:::spiro.core.config

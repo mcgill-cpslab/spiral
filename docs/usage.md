@@ -1,7 +1,7 @@
 # Usage
 
-To use dynamite in a project
+To use SpiroGraph in a project
 
 ```
-import dynamite
+import spiro
 ```

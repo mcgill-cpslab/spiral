@@ -29,8 +29,8 @@ and "help wanted" is open to whoever wants to implement it.
 
 ### Write Documentation
 
-nineturn could always use more documentation, whether as part of the
-official nineturn docs, in docstrings, or even on the web in blog posts,
+spirograph could always use more documentation, whether as part of the
+official spirograph docs, in docstrings, or even on the web in blog posts,
 articles, and such.
 
 ### Submit Feedback
@@ -46,10 +46,10 @@ If you are proposing a feature:
 
 ## Get Started!
 
-Ready to contribute? Here's how to set up `nineturn` for local development.
+Ready to contribute? Here's how to set up `spirograph` for local development.
 
 1. Find an issue you want to work on..
-2. Clone `nineturn` locally
+2. Clone `spirograph` locally
 
     ```
     $ git clone https://github.com/mcgill-cpslab/spiral.git

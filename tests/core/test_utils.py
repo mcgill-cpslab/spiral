@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 # flake8: noqa
-"""Tests `nineturn.core.config` package."""
+"""Tests `spiro.core.config` package."""
 
 import os
 import numpy as np
-from nineturn.core.backends import TENSORFLOW, PYTORCH
+from spiro.core.backends import TENSORFLOW, PYTORCH
 from tests.core.common_functions import *
-from nineturn.core.logger import get_logger
+from spiro.core.logger import get_logger
 
 
 logger = get_logger()
@@ -14,10 +14,10 @@ logger = get_logger()
 
 def test_get_backend_tf():
     clear_background()
-    from nineturn.core.config import _BACKEND, set_backend
+    from spiro.core.config import _BACKEND, set_backend
 
     set_backend(TENSORFLOW)
-    from nineturn.core.utils import _get_backend
+    from spiro.core.utils import _get_backend
 
     current_backend = _get_backend()
     assert current_backend == TENSORFLOW
@@ -25,17 +25,17 @@ def test_get_backend_tf():
 
 def test_get_backend_torch():
     clear_background()
-    from nineturn.core.config import _BACKEND, set_backend
+    from spiro.core.config import _BACKEND, set_backend
 
     set_backend(PYTORCH)
-    from nineturn.core.utils import _get_backend
+    from spiro.core.utils import _get_backend
 
     current_backend = _get_backend()
     assert current_backend == PYTORCH
 
 
 def test_is_sorted():
-    from nineturn.core.utils import is_sorted
+    from spiro.core.utils import is_sorted
 
     sorted_arr = np.arange(10)
     unsorted_arr = np.arange(10)
@@ -45,7 +45,7 @@ def test_is_sorted():
 
 
 def test_anchor():
-    from nineturn.core.utils import get_anchor_position
+    from spiro.core.utils import get_anchor_position
 
     a = np.array([0, 0, 1, 1, 2, 3, 3, 3, 4, 5])
     b = np.unique(a)
